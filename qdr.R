@@ -13,27 +13,27 @@ list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
 sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
 ## sorted_ids <- sorted_ids[sorted_ids != plays_to_remove]  ## removing of plays which do not represent social interactions
 plays <- mclapply(sorted_ids, function(x) read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/networkdata/csv"), stringsAsFactors = F))
-p_chars <- mclapply(sorted_ids, function(x) fromJSON(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x), flatten = T))
+#p_chars <- mclapply(sorted_ids, function(x) fromJSON(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x), flatten = T))
 p_text <- mclapply(sorted_ids, function(x) fromJSON(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/spoken-text-by-character")))
 
 
-list_of_df <- function(play){
-  df <- data.frame(play$cast$id)
-  names(df) <- "cast"
-  df <- df[order(df$cast),]
-  ## names(df) <- make.names(play$id)
-  return (df)
-}
+#list_of_df <- function(play){
+#  df <- data.frame(play$cast$id)
+#  names(df) <- "cast"
+#  df <- df[order(df$cast),]
+#  ## names(df) <- make.names(play$id)
+#  return (df)
+#}
 
-plays_chars <- lapply(p_chars, list_of_df)
+#plays_chars <- lapply(p_chars, list_of_df)
 
 metadata <- read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/metadata.csv"), stringsAsFactors = F)
 metadata <- metadata[order(metadata$name),]
 ## metadata <- metadata[metadata$name != plays_to_remove,] ## removing of plays which do not represent social interactions
 
-names(plays_chars) <- metadata$name
+#names(plays_chars) <- metadata$name
 
-## Remove 'Type' and 'Weight' variables
+## Remove 'Type' variable
 del_vars <- function(play){
   play$Type <- NULL
   names(play) <- tolower(names(play))
@@ -66,13 +66,29 @@ ranking <- function(x){
   x
 }
 
-
 graphs_of_plays <- mclapply(graphs_of_plays, net_calc)
 graphs_df <- mclapply(graphs_of_plays, function(x) as_data_frame(x, what="vertices"))
 graphs_df <- mclapply(graphs_df, ranking)
+names(graphs_df) <- metadata$name
 
-text_calc1 <- stri_count_words(p_text[[1]][["text"]][[1]])
+list_of_df <- function(play){
+  df <- data.frame(play$id)
+  names(df) <- "tmp"
+  df$text <- play$text
+  df$cast <- play$id
+  df <- df[order(df$cast),]
+  df$tmp <- NULL
+  df$num_words <- lapply(df$text, stri_count_words)
+  df$num_words <- lapply(df$num_words, sum)
+  return (df)
+}
 
+plays_text <- lapply(p_text, list_of_df)
+names(plays_text) <- metadata$name
+
+sum(stri_count_words(p_text[[1]][["text"]][[1]]))
+chars1 <- p_text[[1]][["id"]]
+count_calc1 <- data.frame(chars1)
 
 
 
