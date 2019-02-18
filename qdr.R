@@ -2,7 +2,7 @@ library("jsonlite")
 library("curl")
 library("igraph")
 library("stringi")
-## library("ggplot2")
+library("ggplot2")
 library("parallel")
 library("xml2")
 library("magrittr")
@@ -72,7 +72,8 @@ net_calc <- function(x){
   V(x)$closeness <- round(closeness(x, weights = NA, normalized = T), digits = 7)
   V(x)$w_degree <- strength(x)
   V(x)$degree <- degree(x)
-  V(x)$eigenvector <- round(eigen_centrality(x, weights = NA)$vector, digits = 7)
+  #V(x)$eigenvector <- round(eigen_centrality(x, weights = NA)$vector, digits = 7)
+  V(x)$eigenvector <- round(eigen_centrality(x)$vector, digits = 7)
   x
 }
 
@@ -83,7 +84,7 @@ ranking <- function(x){
   x$d_rank <- rank(-x$degree, ties.method = "min")
   x$e_rank <- rank(-x$eigenvector, ties.method = "min")
   x$network_m <- rank(rowMeans(subset(x, select=c("b_rank", "c_rank", "wd_rank", "d_rank", "e_rank"))), ties.method = "min")
-## should it be as.numeric(as.factor())
+  ## should it be as.numeric(as.factor())
   x
 }
 
@@ -95,54 +96,18 @@ cast_compare <- function(x){
   diff <- plays_text[[x]]$cast[!plays_text[[x]]$cast %in% graphs_df[[x]]$name]
   if (!is.null(diff)){
     for (line in diff){
-      #graphs_df[[x]] <- rbind(graphs_df[[x]], c(line, as.numeric(c(0, 0, 0, 0, 0))))
       graphs_df[[x]] <- rbind(graphs_df[[x]], c(0, 0, 0, 0, 0, 0))
       graphs_df[[x]]$name[length(graphs_df[[x]]$name)] <- line
-      }
     }
-  #graphs_df[[x]][,2:6] <- as.numeric(as.vector(graphs_df[[x]][,2:6]))
+  }
   return (graphs_df[[x]])
 }
 
-#graphs_df38 <- graphs_df[["gogol-teatralnyi-razezd"]]
-#text_df38 <- plays_text[["gogol-teatralnyi-razezd"]]
-#diff38 <- as.vector(text_df38$cast[!text_df38$cast %in% graphs_df38$name])
-#if (!is.null(diff38)){
-#  for (line in diff38){
-#    print("done")s
-#    graphs_df38 <- rbind(graphs_df38, c(line, 0, 0, 0, 0, 0))
-#  }
-#}
-#ifelse (text_df37$cast[!text_df37$cast %in% graphs_df37$name] != "0",
-#        graphs_df37 <- rbind(graphs_df37, c(text_df37$cast[!text_df37$cast %in% graphs_df37$name], 0, 0, 0, 0, 0)))
-
 graphs_df <- lapply(names(graphs_df), cast_compare)
-graphs_df <- lapply(graphs_df, ranking) #???????????????????????????????????
+graphs_df <- lapply(graphs_df, ranking)
 graphs_df <- lapply(graphs_df, function(x) x[order(x$name),])
 names(graphs_df) <- metadata$name
 
-
-#sum(stri_count_words(p_text[[1]][["text"]][[1]]))
-#chars1 <- p_text[[1]][["id"]]
-#count_calc1 <- data.frame(chars1)
-
-#graph1 <- graphs_of_plays[[1]]
-#graph1 <- net_calc(graph1)
-#graph1_df <- as_data_frame(graph1, what="vertices")
-#graph1_df <- ranking(graph1_df)
-
-#p_text1 <- plays_text[["andreyev-mysl"]]
-#xml1 <- read_xml("https://dracor.org/api/corpora/rus/play/andreyev-mysl/segmentation", encoding = "UTF-8")
-#unxml1 <- xml_find_all(p_segments[[1]], ".//sgm") %>% as_list
-#unl1 <- sapply(unxml1, unlist)
-#ununl1 <- unlist(unl1)
-#stages1 <- sapply(p_text1$cast, function (x) stri_count_fixed(ununl1, x))
-#stages1_sum <- colSums(stages1)
-#stages1_df <- data.frame(keyName=names(stages1_sum), value=stages1_sum, row.names=NULL)
-
-#count <- function(x){ length((which(x == unl))) }
-#num_segm1 <- lapply(plays_text[["andreyev-mysl"]][["cast"]], function(x) length(which(x == ununl)))
-                    
 unxml <- lapply(p_segments, function(x) xml_find_all(x, ".//sgm") %>% as_list)
 unl <- lapply(unxml, function(x) lapply(x, unlist))
 ununl <- lapply(unl, unlist)
@@ -201,3 +166,11 @@ unite <- function(x){
 
 ranks_df <- lapply(names(graphs_df), unite)
 names(ranks_df) <- metadata$name
+
+metadata$cor_coeff <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$count, ranks_df[[x]]$network,  method = "spearman")$estimate[["rho"]])
+metadata[,7:18] <- NULL
+
+#ggplot(metadata, aes(y=metadata$cor_coeff))+geom_boxplot(na.rm = TRUE)
+
+ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+geom_boxplot(na.rm = TRUE, color="darkblue", fill="lightblue")+theme(axis.title.y=element_blank())
+
