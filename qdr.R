@@ -8,7 +8,7 @@ library("xml2")
 library("magrittr")
 library("data.table")
 
-corpora <- "ger"
+corpora <- "rus"
 
 ## Downloading plays
 list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
@@ -23,9 +23,9 @@ downloader <- function(playname){
   read.csv(paste0("csv/", playname, ".csv"), stringsAsFactors = F)
 }
 
-plays <- lapply(sorted_ids, downloader)
+#plays <- lapply(sorted_ids, downloader)
 
-#plays <- mclapply(sorted_ids, function(x) read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/networkdata/csv"), stringsAsFactors = F))
+plays <- mclapply(sorted_ids, function(x) read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/networkdata/csv"), stringsAsFactors = F))
 #p_chars <- mclapply(sorted_ids, function(x) fromJSON(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x), flatten = T))
 p_text <- mclapply(sorted_ids, function(x) fromJSON(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/spoken-text-by-character")))
 p_segments <- lapply(sorted_ids, function(x) read_xml(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/segmentation"), encoding = "UTF-8"))
@@ -172,5 +172,10 @@ metadata[,7:18] <- NULL
 
 #ggplot(metadata, aes(y=metadata$cor_coeff))+geom_boxplot(na.rm = TRUE)
 
-ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+geom_boxplot(na.rm = TRUE, color="darkblue", fill="lightblue")+theme(axis.title.y=element_blank())
+theme_set(theme_gray(base_size = 18))
+ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
+  geom_boxplot(na.rm = TRUE, color="darkblue", fill="lightblue", size = 0.9)+
+  geom_jitter(color="darkblue", fill="lightblue", size = 2.5)+
+  labs(x="Number of characters", y = "Correlation coefficient")
+  #theme(axis.title.y=element_blank())
 
