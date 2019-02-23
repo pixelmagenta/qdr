@@ -7,8 +7,9 @@ library("parallel")
 library("xml2")
 library("magrittr")
 library("data.table")
+#library("dplyr")
 
-corpora <- "rus"
+corpora <- "ger"
 
 ## Downloading plays
 list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
@@ -23,9 +24,9 @@ downloader <- function(playname){
   read.csv(paste0("csv/", playname, ".csv"), stringsAsFactors = F)
 }
 
-#plays <- lapply(sorted_ids, downloader)
+plays <- lapply(sorted_ids, downloader)
 
-plays <- mclapply(sorted_ids, function(x) read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/networkdata/csv"), stringsAsFactors = F))
+#plays <- mclapply(sorted_ids, function(x) read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/networkdata/csv"), stringsAsFactors = F))
 #p_chars <- mclapply(sorted_ids, function(x) fromJSON(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x), flatten = T))
 p_text <- mclapply(sorted_ids, function(x) fromJSON(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/spoken-text-by-character")))
 p_segments <- lapply(sorted_ids, function(x) read_xml(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/segmentation"), encoding = "UTF-8"))
@@ -161,14 +162,26 @@ unite <- function(x){
   df$weighted_degree <- graphs_df[[x]]$wd_rank
   df$degree <- graphs_df[[x]]$d_rank
   df$eigenvector <- graphs_df[[x]]$d_rank
+  df$overall <- rank(rowMeans(subset(df, select=c("network", "count"))), ties.method = "min")
   return(df)
 }
 
 ranks_df <- lapply(names(graphs_df), unite)
 names(ranks_df) <- metadata$name
 
-metadata$cor_coeff <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$count, ranks_df[[x]]$network,  method = "spearman")$estimate[["rho"]])
+num_one <- function(x){
+#if (ranks_df[[x]]$words==1 && ranks_df[[x]]$speech_acts==1 && ranks_df[[x]]$stages==1 && ranks_df[[x]]$betweenness==1 && ranks_df[[x]]$closeness==1 && ranks_df[[x]]$weighted_degree==1 && ranks_df[[x]]$degree==1 && ranks_df[[x]]$eigenvector==1){
+  if (dplyr::filter(ranks_df[[x]], words==1 & speech_acts==1 & stages==1 & betweenness==1 & closeness==1 & weighted_degree==1 & degree==1 & eigenvector==1) != NULL) {
+    num <- 1
+  } else {
+    num <- 0
+  }
+  return (num) 
+}
+
+metadata$cor_coeff <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$count, ranks_df[[x]]$network, method = "spearman")$estimate[["rho"]])
 metadata[,7:18] <- NULL
+metadata$num_one <- sapply(names(graphs_df), num_one)
 
 #ggplot(metadata, aes(y=metadata$cor_coeff))+geom_boxplot(na.rm = TRUE)
 
@@ -177,5 +190,5 @@ ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
   geom_boxplot(na.rm = TRUE, color="darkblue", fill="lightblue", size = 0.9)+
   geom_jitter(color="darkblue", fill="lightblue", size = 2.5)+
   labs(x="Number of characters", y = "Correlation coefficient")
-  #theme(axis.title.y=element_blank())
+#theme(axis.title.y=element_blank())
 
