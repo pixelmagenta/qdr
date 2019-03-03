@@ -8,8 +8,9 @@ library("xml2")
 library("magrittr")
 library("data.table")
 #library("dplyr")
+#library("rapportools")
 
-corpora <- "ger"
+corpora <- "rus"
 
 ## Downloading plays
 list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
@@ -73,8 +74,8 @@ net_calc <- function(x){
   V(x)$closeness <- round(closeness(x, weights = NA, normalized = T), digits = 7)
   V(x)$w_degree <- strength(x)
   V(x)$degree <- degree(x)
-  #V(x)$eigenvector <- round(eigen_centrality(x, weights = NA)$vector, digits = 7)
-  V(x)$eigenvector <- round(eigen_centrality(x)$vector, digits = 7)
+  V(x)$eigenvector <- round(eigen_centrality(x, weights = NA)$vector, digits = 7)
+  #V(x)$eigenvector <- round(eigen_centrality(x)$vector, digits = 7) nooo
   x
 }
 
@@ -171,16 +172,16 @@ names(ranks_df) <- metadata$name
 
 num_one <- function(x){
 #if (ranks_df[[x]]$words==1 && ranks_df[[x]]$speech_acts==1 && ranks_df[[x]]$stages==1 && ranks_df[[x]]$betweenness==1 && ranks_df[[x]]$closeness==1 && ranks_df[[x]]$weighted_degree==1 && ranks_df[[x]]$degree==1 && ranks_df[[x]]$eigenvector==1){
-  if (dplyr::filter(ranks_df[[x]], words==1 & speech_acts==1 & stages==1 & betweenness==1 & closeness==1 & weighted_degree==1 & degree==1 & eigenvector==1) != NULL) {
-    num <- 1
-  } else {
+  if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], words==1 & speech_acts==1 & stages==1 & betweenness==1 & closeness==1 & weighted_degree==1 & degree==1 & eigenvector==1))) {
     num <- 0
+  } else {
+    num <- 1
   }
   return (num) 
 }
 
 metadata$cor_coeff <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$count, ranks_df[[x]]$network, method = "spearman")$estimate[["rho"]])
-metadata[,7:18] <- NULL
+#metadata[,7:18] <- NULL
 metadata$num_one <- sapply(names(graphs_df), num_one)
 
 #ggplot(metadata, aes(y=metadata$cor_coeff))+geom_boxplot(na.rm = TRUE)
@@ -189,6 +190,14 @@ theme_set(theme_gray(base_size = 18))
 ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
   geom_boxplot(na.rm = TRUE, color="darkblue", fill="lightblue", size = 0.9)+
   geom_jitter(color="darkblue", fill="lightblue", size = 2.5)+
-  labs(x="Number of characters", y = "Correlation coefficient")
-#theme(axis.title.y=element_blank())
+  labs(x="Number of characters", y = "Correlation coefficient")+
+  ggtitle("Russian")+
+  theme(plot.title = element_text(hjust = 0.5))
 
+theme_set(theme_gray(base_size = 18))
+ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
+  geom_boxplot(na.rm = TRUE, color="seagreen4", fill="seagreen1", size = 0.9)+
+  geom_jitter(color="seagreen4", fill="seagreen1", size = 2.5)+
+  labs(x="Number of characters", y = "Correlation coefficient")+
+  ggtitle("German")+
+  theme(plot.title = element_text(hjust = 0.5))
