@@ -7,7 +7,7 @@ library("parallel")
 library("xml2")
 library("magrittr")
 library("data.table")
-#library("dplyr")
+library("dplyr")
 #library("rapportools")
 
 corpora <- "rus"
@@ -171,7 +171,6 @@ ranks_df <- lapply(names(graphs_df), unite)
 names(ranks_df) <- metadata$name
 
 num_one <- function(x){
-#if (ranks_df[[x]]$words==1 && ranks_df[[x]]$speech_acts==1 && ranks_df[[x]]$stages==1 && ranks_df[[x]]$betweenness==1 && ranks_df[[x]]$closeness==1 && ranks_df[[x]]$weighted_degree==1 && ranks_df[[x]]$degree==1 && ranks_df[[x]]$eigenvector==1){
   if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], words==1 & speech_acts==1 & stages==1 & betweenness==1 & closeness==1 & weighted_degree==1 & degree==1 & eigenvector==1))) {
     num <- 0
   } else {
@@ -186,12 +185,12 @@ metadata$num_one <- sapply(names(graphs_df), num_one)
 
 #ggplot(metadata, aes(y=metadata$cor_coeff))+geom_boxplot(na.rm = TRUE)
 
-theme_set(theme_gray(base_size = 18))
+theme_set(theme_gray(base_size = 24))
 ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
-  geom_boxplot(na.rm = TRUE, color="darkblue", fill="lightblue", size = 0.9)+
-  geom_jitter(color="darkblue", fill="lightblue", size = 2.5)+
+  geom_boxplot(na.rm = TRUE, color="darkblue", fill="lightblue", size = 1.5, outlier.shape = NA)+
+  geom_jitter(color="darkblue", fill="lightblue", size = 3)+
   labs(x="Number of characters", y = "Correlation coefficient")+
-  ggtitle("Russian")+
+  #ggtitle("Russian")+
   theme(plot.title = element_text(hjust = 0.5))
 
 theme_set(theme_gray(base_size = 18))
@@ -201,3 +200,33 @@ ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
   labs(x="Number of characters", y = "Correlation coefficient")+
   ggtitle("German")+
   theme(plot.title = element_text(hjust = 0.5))
+
+quartiles <- function(x){
+  #library("dplyr")
+  df_q <- data.frame(graphs_df[[x]]$name, stringsAsFactors = F)
+  df_q$betweeness <- graphs_df[[x]]$betweenness
+  #df <- data.frame(c("first","second","third", "fourth"), stringsAsFactors = F)
+  
+  df_q$betweeness <- ntile(df_q$betweeness, 4)
+  df <- df_q %>% group_by(betweeness) %>% count(betweeness)
+  df$betweeness <- NULL
+  names(df)[] <- "betweenness"
+  #df_q$closeness <- dplyr::ntile(graphs_df[[x]]$closeness, 4)
+  #df$closeness <- df_q %>% dplyr::group_by(closeness) %>% dplyr::count(closeness)
+  
+  return (df)
+}
+
+quartiles_df <- lapply(names(plays_text), quartiles)
+names(quartiles_df) <- metadata$name
+
+df_q2 <- data.frame(graphs_df[["andreyev-mysl"]]$name, stringsAsFactors = F)
+df_q2$betweeness <- graphs_df[["andreyev-mysl"]]$betweenness
+df_q2$betweeness <- dplyr::ntile(df_q2$betweeness, 4)
+df2 <- df_q2 %>% dplyr::group_by(betweeness) %>% dplyr::count(betweeness)
+
+tmp <- graphs_df[["andreyev-mysl"]]
+tmp1 <- data.frame(graphs_df[["andreyev-mysl"]]$name, stringsAsFactors = F)
+tmp1$betweenness <- dplyr::ntile(graphs_df[["andreyev-mysl"]]$betweenness, 4)
+tmp2 <- tmp1 %>% dplyr::group_by(quartile) %>% dplyr::count(quartile)
+tmp_sum <- tmp2 %>% count(quartile)
