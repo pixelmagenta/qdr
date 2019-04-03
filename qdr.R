@@ -17,9 +17,7 @@ list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
 sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
 
 downloader <- function(playname){
-  if (file.exists(paste0("csv/", playname, ".csv"))) {
-    
-  } else {
+  if (!file.exists(paste0("csv/", playname, ".csv"))) {
     download.file(paste0("https://dracor.org/api/corpora/", corpora, "/play/", playname, "/networkdata/csv"), paste0("csv/", playname, ".csv"))
   }
   read.csv(paste0("csv/", playname, ".csv"), stringsAsFactors = F)
@@ -91,7 +89,7 @@ ranking <- function(x){
 }
 
 graphs_of_plays <- mclapply(graphs_of_plays, net_calc)
-graphs_df <- mclapply(graphs_of_plays, function(x) as_data_frame(x, what="vertices"))
+graphs_df <- mclapply(graphs_of_plays, function(x) igraph::as_data_frame(x, what="vertices"))
 names(graphs_df) <- metadata$name
 
 cast_compare <- function(x){
