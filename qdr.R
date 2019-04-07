@@ -84,7 +84,7 @@ ranking <- function(x){
   x$d_rank <- rank(-x$degree, ties.method = "min")
   x$e_rank <- rank(-x$eigenvector, ties.method = "min")
   x$network_m <- rank(rowMeans(subset(x, select=c("b_rank", "c_rank", "wd_rank", "d_rank", "e_rank"))), ties.method = "min")
-  ## should it be as.numeric(as.factor())
+  ## important as.numeric(as.factor())
   x
 }
 
@@ -142,7 +142,7 @@ add_ranking <- function(x){
   return(text_df[[x]])
 }
 
-##bind2 <- rbind(graphs_df, text_df) Conect to types of metrics for each play...
+##bind2 <- rbind(graphs_df, text_df) Connect two types of metrics for each play...
 
 
 graphs_df <- lapply(names(graphs_df), cast_compare)
