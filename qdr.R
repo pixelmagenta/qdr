@@ -1,5 +1,5 @@
 library("jsonlite")
-library("curl")
+#library("curl")
 library("igraph")
 library("stringi")
 library("ggplot2")
@@ -103,10 +103,7 @@ cast_compare <- function(x){
   return (graphs_df[[x]])
 }
 
-graphs_df <- lapply(names(graphs_df), cast_compare)
-graphs_df <- lapply(graphs_df, ranking)
-graphs_df <- lapply(graphs_df, function(x) x[order(x$name),])
-names(graphs_df) <- metadata$name
+
 
 unxml <- lapply(p_segments, function(x) xml_find_all(x, ".//sgm") %>% as_list)
 unl <- lapply(unxml, function(x) lapply(x, unlist))
@@ -134,8 +131,8 @@ text_metrics <- function(x){
 
 text_df <- lapply(names(plays_text), text_metrics)
 names(text_df) <- metadata$name
-text_ranks <- lapply(names(text_df), function (x) lapply(-text_df[[x]][,2:4], rank, ties.method = "min"))
-names(text_ranks) <- metadata$name
+#text_ranks <- lapply(names(text_df), function (x) lapply(-text_df[[x]][,2:4], rank, ties.method = "min"))
+#names(text_ranks) <- metadata$name
 
 add_ranking <- function(x){
   text_df[[x]]$rank_words <- text_ranks[[x]]$num_words
@@ -144,6 +141,14 @@ add_ranking <- function(x){
   text_df[[x]]$text_m <- rank(rowMeans(subset(text_df[[x]], select=c("rank_words", "rank_sp", "rank_stages"))), ties.method = "min")
   return(text_df[[x]])
 }
+
+##bind2 <- rbind(graphs_df, text_df) Conect to types of metrics for each play...
+
+
+graphs_df <- lapply(names(graphs_df), cast_compare)
+graphs_df <- lapply(graphs_df, ranking)
+graphs_df <- lapply(graphs_df, function(x) x[order(x$name),])
+names(graphs_df) <- metadata$name
 
 text_df <- lapply(names(text_df), add_ranking)
 names(text_df) <- metadata$name
@@ -199,29 +204,43 @@ ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
   ggtitle("German")+
   theme(plot.title = element_text(hjust = 0.5))
 
+
+
+
 quartiles <- function(x){
-  #library("dplyr")
-  df_q <- data.frame(graphs_df[[x]]$name, stringsAsFactors = F)
-  df_q$betweeness <- graphs_df[[x]]$betweenness
-  #df <- data.frame(c("first","second","third", "fourth"), stringsAsFactors = F)
+  if (length(x$name)>3) {
+    df_q <- data.frame(x$name, stringsAsFactors = F)
+    #df_q$betweeness <- x$betweenness
+    
+    df <- data.frame(c("first","second","third", "fourth"), stringsAsFactors = F)
+    names(df) <- "group"
+    
+    for (col in names(x)[2:6]){
+      df_q[col] <- ntile(x[col], 4)
+      df_t <- df_q %>% group_by_(col) %>% count_(col)
+      df[col] <- df_t$n
+      df[col]<- prop.table(df[col])
+    }
+  }
   
-  df_q$betweeness <- ntile(df_q$betweeness, 4)
-  df <- df_q %>% group_by(betweeness) %>% count(betweeness)
-  df$betweeness <- NULL
-  names(df)[] <- "betweenness"
-  #df_q$closeness <- dplyr::ntile(graphs_df[[x]]$closeness, 4)
-  #df$closeness <- df_q %>% dplyr::group_by(closeness) %>% dplyr::count(closeness)
+  #df_q$betweeness <- ntile(df_q$betweeness, 4)
+  #df <- df_q %>% group_by(betweeness) %>% count(betweeness)
+  #df$betweeness <- NULL
+  #names(df)[1] <- "betweenness"
   
   return (df)
 }
 
-quartiles_df <- lapply(names(plays_text), quartiles)
+quartiles_df <- lapply(graphs_df, quartiles)
 names(quartiles_df) <- metadata$name
 
-df_q2 <- data.frame(graphs_df[["andreyev-mysl"]]$name, stringsAsFactors = F)
-df_q2$betweeness <- graphs_df[["andreyev-mysl"]]$betweenness
-df_q2$betweeness <- dplyr::ntile(df_q2$betweeness, 4)
-df2 <- df_q2 %>% dplyr::group_by(betweeness) %>% dplyr::count(betweeness)
+
+
+
+df_q2 <- data.frame(graphs_df[["tolstoy-tsar-boris"]]$name, stringsAsFactors = F)
+df_q2$eigenvector <- graphs_df[["tolstoy-tsar-boris"]]$eigenvector
+df_q2$eigenvector <- dplyr::ntile(df_q2$eigenvector, 4)
+df2 <- df_q2 %>% dplyr::group_by(eigenvector) %>% dplyr::count(eigenvector)
 
 tmp <- graphs_df[["andreyev-mysl"]]
 tmp1 <- data.frame(graphs_df[["andreyev-mysl"]]$name, stringsAsFactors = F)
