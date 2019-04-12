@@ -32,6 +32,7 @@ p_segments <- lapply(sorted_ids, function(x) read_xml(paste0("https://dracor.org
 
 metadata <- read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/metadata.csv"), stringsAsFactors = F)
 metadata <- metadata[order(metadata$name),]
+metadata$nodes <- NULL
 ## metadata <- metadata[metadata$name != plays_to_remove,] ## removing of plays which do not represent social interactions
 
 #names(plays_chars) <- metadata$name
@@ -77,19 +78,9 @@ net_calc <- function(x){
   x
 }
 
-ranking <- function(x){
-  x$b_rank <- rank(-x$betweenness, ties.method = "min")
-  x$c_rank <- rank(-x$closeness, ties.method = "min")
-  x$wd_rank <- rank(-x$w_degree, ties.method = "min")
-  x$d_rank <- rank(-x$degree, ties.method = "min")
-  x$e_rank <- rank(-x$eigenvector, ties.method = "min")
-  x$network_m <- rank(rowMeans(subset(x, select=c("b_rank", "c_rank", "wd_rank", "d_rank", "e_rank"))), ties.method = "min")
-  ## important as.numeric(as.factor())
-  x
-}
-
 graphs_of_plays <- mclapply(graphs_of_plays, net_calc)
 graphs_df <- mclapply(graphs_of_plays, function(x) igraph::as_data_frame(x, what="vertices"))
+graphs_df <- lapply(graphs_df, function(x) x[order(x$name),])
 names(graphs_df) <- metadata$name
 
 cast_compare <- function(x){
@@ -102,8 +93,8 @@ cast_compare <- function(x){
   }
   return (graphs_df[[x]])
 }
-
-
+graphs_df <- lapply(names(graphs_df), cast_compare)
+names(graphs_df) <- metadata$name
 
 unxml <- lapply(p_segments, function(x) xml_find_all(x, ".//sgm") %>% as_list)
 unl <- lapply(unxml, function(x) lapply(x, unlist))
@@ -131,50 +122,35 @@ text_metrics <- function(x){
 
 text_df <- lapply(names(plays_text), text_metrics)
 names(text_df) <- metadata$name
-#text_ranks <- lapply(names(text_df), function (x) lapply(-text_df[[x]][,2:4], rank, ties.method = "min"))
-#names(text_ranks) <- metadata$name
 
-add_ranking <- function(x){
-  text_df[[x]]$rank_words <- text_ranks[[x]]$num_words
-  text_df[[x]]$rank_sp <- text_ranks[[x]]$num_sp
-  text_df[[x]]$rank_stages <- text_ranks[[x]]$num_stages
-  text_df[[x]]$text_m <- rank(rowMeans(subset(text_df[[x]], select=c("rank_words", "rank_sp", "rank_stages"))), ties.method = "min")
-  return(text_df[[x]])
+metrics_df <- lapply(names(graphs_df), function (x) data.frame(text_df[[x]], graphs_df[[x]]))
+names(metrics_df) <- metadata$name
+
+del_name <- function(df){
+  df$name <- NULL
+  df
 }
 
-##bind2 <- rbind(graphs_df, text_df) Connect two types of metrics for each play...
+metrics_df <- lapply(metrics_df, del_name)
 
-
-graphs_df <- lapply(names(graphs_df), cast_compare)
-graphs_df <- lapply(graphs_df, ranking)
-graphs_df <- lapply(graphs_df, function(x) x[order(x$name),])
-names(graphs_df) <- metadata$name
-
-text_df <- lapply(names(text_df), add_ranking)
-names(text_df) <- metadata$name
-
-unite <- function(x){
-  df <- data.frame(text_df[[x]]$cast, stringsAsFactors = F)
-  names(df) <- "cast"
-  df$count <- text_df[[x]]$text_m
-  df$network <- graphs_df[[x]]$network_m
-  df$words <- text_df[[x]]$rank_words
-  df$speech_acts <- text_df[[x]]$rank_sp
-  df$stages <- text_df[[x]]$rank_stages
-  df$betweenness <- graphs_df[[x]]$b_rank
-  df$closeness <- graphs_df[[x]]$c_rank
-  df$weighted_degree <- graphs_df[[x]]$wd_rank
-  df$degree <- graphs_df[[x]]$d_rank
-  df$eigenvector <- graphs_df[[x]]$d_rank
-  df$overall <- rank(rowMeans(subset(df, select=c("network", "count"))), ties.method = "min")
+ranking <- function(x){
+  df <- data.frame(x$cast, stringsAsFactors = F)
+  for (col in names(x)[-1]){
+    df$t <- rank(-x[col], ties.method = "min")
+    names(df)[names(df) == 't'] <- paste0(col, "_rank")
+  }
+  df$text <- rank(rowMeans(subset(df, select=c("num_words_rank", "num_sp_rank", "num_stages_rank"))), ties.method = "min")
+  df$network <- rank(rowMeans(subset(df, select=c("betweenness_rank", "closeness_rank", "w_degree_rank", "degree_rank", "eigenvector_rank"))), ties.method = "min")
+  df$overall <- rank(rowMeans(subset(df, select=c("network", "text"))), ties.method = "min")
+  names(df$x.cast) <- "cast"
   return(df)
 }
 
-ranks_df <- lapply(names(graphs_df), unite)
+ranks_df <- lapply(metrics_df, ranking)
 names(ranks_df) <- metadata$name
 
 num_one <- function(x){
-  if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], words==1 & speech_acts==1 & stages==1 & betweenness==1 & closeness==1 & weighted_degree==1 & degree==1 & eigenvector==1))) {
+  if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], num_words_rank==1 & num_sp_rank==1 & num_stages_rank==1 & betweenness_rank==1 & closeness_rank==1 & w_degree_rank==1 & degree_rank==1 & eigenvector_rank==1))) {
     num <- 0
   } else {
     num <- 1
@@ -182,8 +158,11 @@ num_one <- function(x){
   return (num) 
 }
 
-metadata$cor_coeff <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$count, ranks_df[[x]]$network, method = "spearman")$estimate[["rho"]])
-#metadata[,7:18] <- NULL
+metadata$cor_coeff <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$text, ranks_df[[x]]$network, method = "spearman")$estimate[["rho"]])
+#Correlation table for all eight metrics
+#cor(ranks_df[["pushkin-rusalka"]][2:9], method = "spearman")
+
+metadata[,7:19] <- NULL
 metadata$num_one <- sapply(names(graphs_df), num_one)
 
 #ggplot(metadata, aes(y=metadata$cor_coeff))+geom_boxplot(na.rm = TRUE)
@@ -204,18 +183,15 @@ ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
   ggtitle("German")+
   theme(plot.title = element_text(hjust = 0.5))
 
-
-
-
 quartiles <- function(x){
-  if (length(x$name)>3) {
-    df_q <- data.frame(x$name, stringsAsFactors = F)
+  if (length(x$cast)>3) {
+    df_q <- data.frame(x$cast, stringsAsFactors = F)
     #df_q$betweeness <- x$betweenness
     
     df <- data.frame(c("first","second","third", "fourth"), stringsAsFactors = F)
     names(df) <- "group"
     
-    for (col in names(x)[2:6]){
+    for (col in names(x)[2:9]){
       df_q[col] <- ntile(x[col], 4)
       df_t <- df_q %>% group_by_(col) %>% count_(col)
       df[col] <- df_t$n
@@ -231,10 +207,8 @@ quartiles <- function(x){
   return (df)
 }
 
-quartiles_df <- lapply(graphs_df, quartiles)
+quartiles_df <- lapply(metrics_df, quartiles)
 names(quartiles_df) <- metadata$name
-
-
 
 
 df_q2 <- data.frame(graphs_df[["tolstoy-tsar-boris"]]$name, stringsAsFactors = F)
