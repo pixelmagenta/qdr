@@ -70,6 +70,7 @@ graphs_of_plays <- mclapply(plays, function(x) graph_from_data_frame(x, directed
 
 net_calc <- function(x){
   V(x)$betweenness <- betweenness(x, v = V(x), directed = F, weights = NA)
+  #V(x)$w_betweenness <- betweenness(x, v = V(x), directed = F, weights = x$Weight)
   V(x)$closeness <- round(closeness(x, weights = NA, normalized = T), digits = 7)
   V(x)$w_degree <- strength(x)
   V(x)$degree <- degree(x)
@@ -149,11 +150,15 @@ ranking <- function(x){
 ranks_df <- lapply(metrics_df, ranking)
 names(ranks_df) <- metadata$name
 
+#protagonists <- data.frame()
+#protagonists <- rbind(c("play","character"))
+
 num_one <- function(x){
   if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], num_words_rank==1 & num_sp_rank==1 & num_stages_rank==1 & betweenness_rank==1 & closeness_rank==1 & w_degree_rank==1 & degree_rank==1 & eigenvector_rank==1))) {
     num <- 0
   } else {
-    num <- 1
+    num <- ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast
+    #protagonists <- rbind(protagonists, c(x, ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast))
   }
   return (num) 
 }
@@ -184,21 +189,24 @@ ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
   theme(plot.title = element_text(hjust = 0.5))
 
 quartiles <- function(x){
-  if (length(x$cast)>3) {
     df_q <- data.frame(x$cast, stringsAsFactors = F)
     #df_q$betweeness <- x$betweenness
     
     df <- data.frame(c("first","second","third", "fourth"), stringsAsFactors = F)
     names(df) <- "group"
-    
+    if (length(x$cast)>3) { #there are 7 plays where length(x$cast)<=3
+      for (col in names(x)[2:9]){
+        df_q[col] <- ntile(x[col], 4)
+        df_t <- df_q %>% group_by_(col) %>% count_(col)
+        df[col] <- df_t$n
+        df[col]<- prop.table(df[col])
+      }
+  } else {
     for (col in names(x)[2:9]){
-      df_q[col] <- ntile(x[col], 4)
-      df_t <- df_q %>% group_by_(col) %>% count_(col)
-      df[col] <- df_t$n
-      df[col]<- prop.table(df[col])
+      df[col]<- c(0,0,0,0)
     }
+    
   }
-  
   #df_q$betweeness <- ntile(df_q$betweeness, 4)
   #df <- df_q %>% group_by(betweeness) %>% count(betweeness)
   #df$betweeness <- NULL
@@ -209,6 +217,21 @@ quartiles <- function(x){
 
 quartiles_df <- lapply(metrics_df, quartiles)
 names(quartiles_df) <- metadata$name
+
+percentages <- function(x){ #идея рабочая, но надо как-то по-другому седлать. Сейчас на выходе список из 144 датафреймов, а нужен один датафрейм с 4 строками и 8 колонками-метриками
+  df <- data.frame(c("first","second","third", "fourth"), stringsAsFactors = F)
+  names(df) <- "group"
+  for (col in names(x)[2:9]){
+    df[col] <- c(0,0,0,0)
+    df[col] <- df[col]+x[col]
+    df[col] <- df[col]/(144-7)
+  }
+  return (df)
+}
+
+percentages_df <- lapply(quartiles_df, percentages)
+names(percentages_df) <- metadata$name
+
 
 
 df_q2 <- data.frame(graphs_df[["tolstoy-tsar-boris"]]$name, stringsAsFactors = F)
