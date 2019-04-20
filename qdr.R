@@ -218,18 +218,24 @@ quartiles <- function(x){
 quartiles_df <- lapply(metrics_df, quartiles)
 names(quartiles_df) <- metadata$name
 
-percentages <- function(x){ #идея рабочая, но надо как-то по-другому седлать. Сейчас на выходе список из 144 датафреймов, а нужен один датафрейм с 4 строками и 8 колонками-метриками
+quartiles_bind <- bind_rows(quartiles_df, .id = "play")
+
+percentages <- function(x){ #идея не рабочая, надо как-то по-другому седлать
   df <- data.frame(c("first","second","third", "fourth"), stringsAsFactors = F)
   names(df) <- "group"
-  for (col in names(x)[2:9]){
-    df[col] <- c(0,0,0,0)
-    df[col] <- df[col]+x[col]
-    df[col] <- df[col]/(144-7)
+  for (play in x){
+    for (col in names(x)[2:9]){
+      #df[col] <- c(0,0,0,0)
+      df[col] <- df[col]+x[col]
+      #df[col] <- df[col]/(144-7)
+    }
   }
+  #df <- df[2:9]/(144-7)
   return (df)
 }
 
-percentages_df <- lapply(quartiles_df, percentages)
+percentages_df <- percentages(quartiles_df)
+#percentages_df <- lapply(quartiles_df, percentages)
 names(percentages_df) <- metadata$name
 
 
