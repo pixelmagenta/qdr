@@ -10,23 +10,21 @@ library("data.table")
 library("dplyr")
 #library("rapportools")
 
-corpora <- "rus"
+corpora <- "ger"
 
 ## Downloading plays
 list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
 sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
 
-downloader <- function(playname){
+download_plays <- function(playname){
   if (!file.exists(paste0("csv/", playname, ".csv"))) {
     download.file(paste0("https://dracor.org/api/corpora/", corpora, "/play/", playname, "/networkdata/csv"), paste0("csv/", playname, ".csv"))
   }
   read.csv(paste0("csv/", playname, ".csv"), stringsAsFactors = F)
 }
 
-plays <- lapply(sorted_ids, downloader)
+plays <- lapply(sorted_ids, download_plays)
 
-#plays <- mclapply(sorted_ids, function(x) read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/networkdata/csv"), stringsAsFactors = F))
-#p_chars <- mclapply(sorted_ids, function(x) fromJSON(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x), flatten = T))
 p_text <- mclapply(sorted_ids, function(x) fromJSON(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/spoken-text-by-character")))
 p_segments <- lapply(sorted_ids, function(x) read_xml(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/segmentation"), encoding = "UTF-8"))
 
@@ -35,7 +33,6 @@ metadata <- metadata[order(metadata$name),]
 metadata$nodes <- NULL
 ## metadata <- metadata[metadata$name != plays_to_remove,] ## removing of plays which do not represent social interactions
 
-#names(plays_chars) <- metadata$name
 
 list_of_df <- function(play){
   df <- data.frame(play$id, stringsAsFactors = F)
@@ -188,17 +185,35 @@ ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
   ggtitle("German")+
   theme(plot.title = element_text(hjust = 0.5))
 
-quartiles <- function(x){
-    df_q <- data.frame(x$cast, stringsAsFactors = F)
-    #df_q$betweeness <- x$betweenness
-    
-    df <- data.frame(c("first","second","third", "fourth"), stringsAsFactors = F)
+get_cluster_sizes <- function(arr){
+  diffs <- diff(sort(arr))
+  # compute 3 max diffs between subsequent pairs
+  maxs <-  c(-1, -1, -1)
+  idx <-  c(-1, -1, -1)
+  i <- 1
+  for (d in rev(diffs)){
+    if (d > maxs[1]) {
+      maxs = c(d, maxs[1:2])
+      idx = c(i, idx[1:2])
+    } else if (d > maxs[2]) {
+      maxs = c(maxs[1], d, maxs[2])
+      idx = c(idx[1], i, idx[2])
+    } else if (d > maxs[3]) {
+      maxs[3] <- d
+      idx[3] <- i
+    } 
+    i <- i + 1
+  }
+  # return number of elements in each partition
+  return (diff(sort(c(0, idx, length(arr)))))
+}
+
+quantify_importance <- function(x){
+    df <- data.frame(c("4", "3", "2", "1"), stringsAsFactors = F)
     names(df) <- "group"
-    if (length(x$cast)>3) { #there are 7 plays where length(x$cast)<=3
+    if (length(x$cast)>3) { #there are 7 Rus and 15 Ger plays where length(x$cast)<=3
       for (col in names(x)[2:9]){
-        df_q[col] <- ntile(x[col], 4)
-        df_t <- df_q %>% group_by_(col) %>% count_(col)
-        df[col] <- df_t$n
+        df[col] <- get_cluster_sizes(unlist(c(x[col])))
         df[col]<- prop.table(df[col])
       }
   } else {
@@ -207,46 +222,19 @@ quartiles <- function(x){
     }
     
   }
-  #df_q$betweeness <- ntile(df_q$betweeness, 4)
-  #df <- df_q %>% group_by(betweeness) %>% count(betweeness)
-  #df$betweeness <- NULL
-  #names(df)[1] <- "betweenness"
-  
   return (df)
 }
 
-quartiles_df <- lapply(metrics_df, quartiles)
+
+quartiles_df <- lapply(metrics_df, quantify_importance)
 names(quartiles_df) <- metadata$name
 
-quartiles_bind <- bind_rows(quartiles_df, .id = "play")
+quartiles_bind <- bind_rows(quartiles_df)
+percentages_df <- quartiles_bind %>% group_by(group) %>% summarise_all(funs(sum))
+percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(471-15))
+#percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(144-7))
 
-percentages <- function(x){ #идея не рабочая, надо как-то по-другому седлать
-  df <- data.frame(c("first","second","third", "fourth"), stringsAsFactors = F)
-  names(df) <- "group"
-  for (play in x){
-    for (col in names(x)[2:9]){
-      #df[col] <- c(0,0,0,0)
-      df[col] <- df[col]+x[col]
-      #df[col] <- df[col]/(144-7)
-    }
-  }
-  #df <- df[2:9]/(144-7)
-  return (df)
-}
-
-percentages_df <- percentages(quartiles_df)
-#percentages_df <- lapply(quartiles_df, percentages)
-names(percentages_df) <- metadata$name
+bar_chart1 <- ggplot(percentages_df, aes(x=group, y=betweenness)) + geom_bar(stat = "identity") + coord_flip()
+bar_chart1
 
 
-
-df_q2 <- data.frame(graphs_df[["tolstoy-tsar-boris"]]$name, stringsAsFactors = F)
-df_q2$eigenvector <- graphs_df[["tolstoy-tsar-boris"]]$eigenvector
-df_q2$eigenvector <- dplyr::ntile(df_q2$eigenvector, 4)
-df2 <- df_q2 %>% dplyr::group_by(eigenvector) %>% dplyr::count(eigenvector)
-
-tmp <- graphs_df[["andreyev-mysl"]]
-tmp1 <- data.frame(graphs_df[["andreyev-mysl"]]$name, stringsAsFactors = F)
-tmp1$betweenness <- dplyr::ntile(graphs_df[["andreyev-mysl"]]$betweenness, 4)
-tmp2 <- tmp1 %>% dplyr::group_by(quartile) %>% dplyr::count(quartile)
-tmp_sum <- tmp2 %>% count(quartile)
