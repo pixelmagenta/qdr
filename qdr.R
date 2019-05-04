@@ -14,9 +14,9 @@ corpora <- "ger"
 
 ## Downloading plays
 list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
+sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
 
 download_plays <- function(playname){
-sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
   if (!file.exists(paste0("csv/", playname, ".csv"))) {
     download.file(paste0("https://dracor.org/api/corpora/", corpora, "/play/", playname, "/networkdata/csv"), paste0("csv/", playname, ".csv"))
   }
@@ -231,6 +231,6 @@ names(quartiles_df) <- metadata$name
 
 quartiles_bind <- bind_rows(quartiles_df)
 percentages_df <- quartiles_bind %>% group_by(group) %>% summarise_all(funs(sum))
-percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(471-15))
-#percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(144-7))
+#percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(471-15))
+percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(144-7))
 

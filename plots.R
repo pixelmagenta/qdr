@@ -1,38 +1,19 @@
-library("wesanderson")
-library("Redmonder")
+library("ggplot2")
+#library("wesanderson")
+#library("Redmonder")
 library("rcartocolor")
 library("gridExtra")
+library("reshape")
+library("ggsci")
 
-bar_chart1 <- ggplot(percentages_df, aes(x=group, y=betweenness, fill = group)) + 
-  geom_bar(stat = "identity") +
-  scale_fill_manual(values=redmonder.pal(4,"dPBIPuGn"))+
-  coord_flip()
-bar_chart1
+percentages_df2 <- melt(percentages_df, id.vars = c("group"))
 
-bar_chart2 <- ggplot(percentages_df, aes(x=group, y=betweenness, fill = group)) + 
-  geom_bar(stat = "identity") +
-  scale_fill_manual(values=wes_anderson(4,"GrandBudapest2"))+
-  coord_flip()
-bar_chart2
-
-p1 <- ggplot(percentages_df, aes(x=group, y=degree, fill = group)) + 
-  geom_bar(stat = "identity") +
-  scale_fill_manual(values=carto_pal(7, "Emrld"))+
-  #theme(legend.position="none")+
-  theme_minimal()+
-  coord_flip()
-
-p2 <- ggplot(percentages_df, aes(x=group, y=closeness, fill = group)) + 
-  geom_bar(stat = "identity") +
-  scale_fill_manual(values=carto_pal(7, "Emrld"))+
-  #theme(legend.position="none")+
-  theme_minimal()+
-  coord_flip()
-
-p3 <- ggplot(percentages_df, aes(x=group, y=betweenness, fill = group)) + 
+percentages_plot <- ggplot(percentages_df2, aes(x=group, y=value, fill = group)) + 
   geom_bar(stat = "identity") +
   scale_fill_manual(values=carto_pal(7, "Emrld"))+
   theme_minimal()+
+  theme(legend.position="none")+
+  geom_text(aes(label = paste0(round(percentages_df2$value, digits = 0),"%")), hjust=1.5, size=3)+
   coord_flip()
 
-grid.arrange(p1, p2, p3, nrow = 3)
+percentages_plot + facet_wrap(percentages_df2$variable, nrow = 8) + ggtitle("GerDraCor")
