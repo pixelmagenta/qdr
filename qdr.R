@@ -10,11 +10,14 @@ library("data.table")
 library("dplyr")
 #library("rapportools")
 
-corpora <- "ger"
+corpora <- "rus"
 
-## Downloading plays
-list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
-sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
+## Download for new plays
+#list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
+#sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
+
+df_sorted_ids <- read.csv(file="rus_listofnames144.csv", stringsAsFactors = F)
+sorted_ids <- df_sorted_ids$x
 
 download_plays <- function(playname){
   if (!file.exists(paste0("csv/", playname, ".csv"))) {
@@ -66,8 +69,8 @@ plays <- mclapply(plays, del_vars)
 graphs_of_plays <- mclapply(plays, function(x) graph_from_data_frame(x, directed = F))
 
 net_calc <- function(x){
-  V(x)$betweenness <- betweenness(x, v = V(x), directed = F, weights = NA)
-  #V(x)$w_betweenness <- betweenness(x, v = V(x), directed = F, weights = x$Weight)
+  #V(x)$betweenness <- betweenness(x, v = V(x), directed = F, weights = NA)
+  V(x)$betweenness <- betweenness(x, v = V(x), directed = F, weights = x$Weight)
   V(x)$closeness <- round(closeness(x, weights = NA, normalized = T), digits = 7)
   V(x)$w_degree <- strength(x)
   V(x)$degree <- degree(x)
@@ -167,14 +170,15 @@ metadata$cor_coeff <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]
 metadata[,7:19] <- NULL
 metadata$num_one <- sapply(names(graphs_df), num_one)
 
-#ggplot(metadata, aes(y=metadata$cor_coeff))+geom_boxplot(na.rm = TRUE)
+
+
 
 theme_set(theme_gray(base_size = 24))
 ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
   geom_boxplot(na.rm = TRUE, color="darkblue", fill="lightblue", size = 1.5, outlier.shape = NA)+
   geom_jitter(color="darkblue", fill="lightblue", size = 3)+
   labs(x="Number of characters", y = "Correlation coefficient")+
-  #ggtitle("Russian")+
+  ggtitle("Russian")+
   theme(plot.title = element_text(hjust = 0.5))
 
 theme_set(theme_gray(base_size = 18))
@@ -184,6 +188,8 @@ ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
   labs(x="Number of characters", y = "Correlation coefficient")+
   ggtitle("German")+
   theme(plot.title = element_text(hjust = 0.5))
+
+
 
 get_cluster_sizes <- function(arr){
   diffs <- diff(sort(arr))
@@ -225,7 +231,6 @@ quantify_importance <- function(x){
   return (df)
 }
 
-
 quartiles_df <- lapply(metrics_df, quantify_importance)
 names(quartiles_df) <- metadata$name
 
@@ -234,3 +239,21 @@ percentages_df <- quartiles_bind %>% group_by(group) %>% summarise_all(funs(sum)
 #percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(471-15))
 percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(144-7))
 
+download_slric_measures <- function(playname){
+  df <- read.csv(paste0("slric/", playname, ".csv"), stringsAsFactors = F)
+  df$X <- NULL
+  df
+}
+
+slric_df <- lapply(sorted_ids, download_slric_measures)
+
+ranking_s <- function(x){
+  df <- data.frame(x$cast, stringsAsFactors = F)
+  for (col in names(x)[-1]){
+    df$t <- rank(-x[col], ties.method = "min")
+    names(df)[names(df) == 't'] <- paste0(col, "_rank")
+  }
+  return(df)
+}
+
+ranked_slric_df <- lapply(slric_df, ranking_s)
