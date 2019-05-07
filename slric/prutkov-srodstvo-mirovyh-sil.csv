@@ -1,5 +1,5 @@
-"","cast","30_SRIC_EX","30_Max","50_SRIC_EX","50_Max","70_SRIC_EX","70_Max"
-"1","juzhnyj_uragan",1,1,1,1,1,1
-"2","dub",1,1,1,1,1,1
-"3","nochnye_chasy",1,1,1,1,1,1
-"4","nochnaja_tishina",1,1,1,1,1,1
+"","Element","Value.30_SRIC_EX","Value.30_Max","Value.50_SRIC_EX","Value.50_Max","Value.70_SRIC_EX","Value.70_Max"
+"1","juzhnyj_uragan","0.25","0","0.25","0","0.25","0"
+"3","dub","0.25","0","0.25","0","0.25","0"
+"5","nochnye_chasy","0.25","0","0.25","0","0.25","0"
+"7","nochnaja_tishina","0.25","0","0.25","0","0.25","0"

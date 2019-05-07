@@ -1,4 +1,4 @@
-"","cast","30_SRIC_EX","30_Max","50_SRIC_EX","50_Max","70_SRIC_EX","70_Max"
-"1","Knjaginja",2,2,2,2,2,2
-"2","Knjaz",2,2,2,2,2,2
-"3","Baron",1,1,1,1,1,1
+"","Element","Value.30_SRIC_EX","Value.30_Max","Value.50_SRIC_EX","Value.50_Max","Value.70_SRIC_EX","Value.70_Max"
+"1","Knjaginja","0.5","0.5","0.5","0.5","0.5","0.5"
+"3","Knjaz","0.5","0.5","0.5","0.5","0.5","0.5"
+"5","Baron","0","0","0","0","0","0"

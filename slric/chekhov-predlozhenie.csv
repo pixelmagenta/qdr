@@ -1,4 +1,4 @@
-"","cast","30_SRIC_EX","30_Max","50_SRIC_EX","50_Max","70_SRIC_EX","70_Max"
-"1","chubukov",1,2,1,1,1,1
-"2","lomov",2,1,2,2,2,2
-"3","natalja_stepanovna",2,1,2,2,2,2
+"","Element","Value.30_SRIC_EX","Value.30_Max","Value.50_SRIC_EX","Value.50_Max","Value.70_SRIC_EX","Value.70_Max"
+"1","chubukov","0.3","0.35","0","0","0.323076923076923","0.3"
+"3","lomov","0.35","0.325","0.5","0.5","0.338461538461538","0.35"
+"5","natalja_stepanovna","0.35","0.325","0.5","0.5","0.338461538461538","0.35"

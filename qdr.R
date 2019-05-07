@@ -13,8 +13,8 @@ library("dplyr")
 corpora <- "rus"
 
 ## Download for new plays
-#list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
-#sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
+list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
+sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
 
 df_sorted_ids <- read.csv(file="rus_listofnames144.csv", stringsAsFactors = F)
 sorted_ids <- df_sorted_ids$x
@@ -29,12 +29,24 @@ download_plays <- function(playname){
 plays <- lapply(sorted_ids, download_plays)
 
 p_text <- mclapply(sorted_ids, function(x) fromJSON(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/spoken-text-by-character")))
+options(timeout = 40000)#probably doesn't help
 p_segments <- lapply(sorted_ids, function(x) read_xml(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/segmentation"), encoding = "UTF-8"))
 
-metadata <- read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/metadata.csv"), stringsAsFactors = F)
+
+#metadata <- read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/metadata.csv"), stringsAsFactors = F) to update
+
+metadata <- read.csv(file="rus_metadata144.csv", stringsAsFactors = F)
+metadata$X <- NULL
+metadata[,7:20] <- NULL
 metadata <- metadata[order(metadata$name),]
-metadata$nodes <- NULL
 ## metadata <- metadata[metadata$name != plays_to_remove,] ## removing of plays which do not represent social interactions
+
+names(p_segments) <- metadata$name
+
+#cashing of segments info
+for (name in names(p_segments)){
+  write_xml(p_segments[[name]], file = paste0("rus_segments/", name, ".xml"))
+}
 
 
 list_of_df <- function(play){
@@ -167,28 +179,7 @@ metadata$cor_coeff <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]
 #Correlation table for all eight metrics
 #cor(ranks_df[["pushkin-rusalka"]][2:9], method = "spearman")
 
-metadata[,7:19] <- NULL
 metadata$num_one <- sapply(names(graphs_df), num_one)
-
-
-
-
-theme_set(theme_gray(base_size = 24))
-ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
-  geom_boxplot(na.rm = TRUE, color="darkblue", fill="lightblue", size = 1.5, outlier.shape = NA)+
-  geom_jitter(color="darkblue", fill="lightblue", size = 3)+
-  labs(x="Number of characters", y = "Correlation coefficient")+
-  ggtitle("Russian")+
-  theme(plot.title = element_text(hjust = 0.5))
-
-theme_set(theme_gray(base_size = 18))
-ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
-  geom_boxplot(na.rm = TRUE, color="seagreen4", fill="seagreen1", size = 0.9)+
-  geom_jitter(color="seagreen4", fill="seagreen1", size = 2.5)+
-  labs(x="Number of characters", y = "Correlation coefficient")+
-  ggtitle("German")+
-  theme(plot.title = element_text(hjust = 0.5))
-
 
 
 get_cluster_sizes <- function(arr){
@@ -220,7 +211,7 @@ quantify_importance <- function(x){
     if (length(x$cast)>3) { #there are 7 Rus and 15 Ger plays where length(x$cast)<=3
       for (col in names(x)[2:9]){
         df[col] <- get_cluster_sizes(unlist(c(x[col])))
-        df[col]<- prop.table(df[col])
+        #df[col]<- prop.table(df[col])
       }
   } else {
     for (col in names(x)[2:9]){
@@ -239,13 +230,21 @@ percentages_df <- quartiles_bind %>% group_by(group) %>% summarise_all(funs(sum)
 #percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(471-15))
 percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(144-7))
 
+
+
+
+
+
 download_slric_measures <- function(playname){
   df <- read.csv(paste0("slric/", playname, ".csv"), stringsAsFactors = F)
   df$X <- NULL
+  names(df) <- c("cast", "30_SRIC_EX", "30_Max", "50_SRIC_EX", "50_Max", "70_SRIC_EX", "70_Max")
   df
 }
 
 slric_df <- lapply(sorted_ids, download_slric_measures)
+names(slric_df) <- metadata$name
+
 
 ranking_s <- function(x){
   df <- data.frame(x$cast, stringsAsFactors = F)
@@ -257,3 +256,4 @@ ranking_s <- function(x){
 }
 
 ranked_slric_df <- lapply(slric_df, ranking_s)
+names(ranked_slric_df) <- metadata$name
