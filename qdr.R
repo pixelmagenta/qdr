@@ -1,5 +1,5 @@
 library("jsonlite")
-#library("curl")
+library("curl")
 library("igraph")
 library("stringi")
 library("ggplot2")
@@ -8,16 +8,16 @@ library("xml2")
 library("magrittr")
 library("data.table")
 library("dplyr")
-#library("rapportools")
+library("rapportools")
 
-corpora <- "rus"
+corpora <- "ger"
 
 ## Download for new plays
 list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
 sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
 
-df_sorted_ids <- read.csv(file="rus_listofnames144.csv", stringsAsFactors = F)
-sorted_ids <- df_sorted_ids$x
+#df_sorted_ids <- read.csv(file="rus_listofnames144.csv", stringsAsFactors = F)
+#sorted_ids <- df_sorted_ids$x
 
 download_plays <- function(playname){
   if (!file.exists(paste0("csv/", playname, ".csv"))) {
@@ -33,9 +33,9 @@ options(timeout = 40000)#probably doesn't help
 p_segments <- lapply(sorted_ids, function(x) read_xml(paste0("https://dracor.org/api/corpora/", corpora, "/play/", x, "/segmentation"), encoding = "UTF-8"))
 
 
-#metadata <- read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/metadata.csv"), stringsAsFactors = F) to update
+metadata <- read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/metadata.csv"), stringsAsFactors = F) #to update
 
-metadata <- read.csv(file="rus_metadata144.csv", stringsAsFactors = F)
+#metadata <- read.csv(file="rus_metadata144.csv", stringsAsFactors = F)
 metadata$X <- NULL
 metadata[,7:20] <- NULL
 metadata <- metadata[order(metadata$name),]
@@ -44,9 +44,9 @@ metadata <- metadata[order(metadata$name),]
 names(p_segments) <- metadata$name
 
 #cashing of segments info
-for (name in names(p_segments)){
-  write_xml(p_segments[[name]], file = paste0("rus_segments/", name, ".xml"))
-}
+#for (name in names(p_segments)){
+#  write_xml(p_segments[[name]], file = paste0("rus_segments/", name, ".xml"))
+#}
 
 
 list_of_df <- function(play){
@@ -57,8 +57,8 @@ list_of_df <- function(play){
   df <- df[order(df$cast),]
   df$tmp <- NULL
   df$num_words <- lapply(df$text, stri_count_words)
-  df$num_sp <- sapply(df$num_words, length)
-  df$num_words <- sapply(df$num_words, sum)
+  df$num_sp <- as.numeric(sapply(df$num_words, length))
+  df$num_words <- as.numeric(sapply(df$num_words, sum))
   df$text <- NULL
   return (df)
 }
@@ -81,8 +81,8 @@ plays <- mclapply(plays, del_vars)
 graphs_of_plays <- mclapply(plays, function(x) graph_from_data_frame(x, directed = F))
 
 net_calc <- function(x){
-  #V(x)$betweenness <- betweenness(x, v = V(x), directed = F, weights = NA)
-  V(x)$betweenness <- betweenness(x, v = V(x), directed = F, weights = x$Weight)
+  V(x)$betweenness <- betweenness(x, v = V(x), directed = F, weights = NA)
+  #V(x)$betweenness <- betweenness(x, v = V(x), directed = F, weights = x$Weight)
   V(x)$closeness <- round(closeness(x, weights = NA, normalized = T), digits = 7)
   V(x)$w_degree <- strength(x)
   V(x)$degree <- degree(x)
@@ -162,9 +162,6 @@ ranking <- function(x){
 ranks_df <- lapply(metrics_df, ranking)
 names(ranks_df) <- metadata$name
 
-#protagonists <- data.frame()
-#protagonists <- rbind(c("play","character"))
-
 num_one <- function(x){
   if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], num_words_rank==1 & num_sp_rank==1 & num_stages_rank==1 & betweenness_rank==1 & closeness_rank==1 & w_degree_rank==1 & degree_rank==1 & eigenvector_rank==1))) {
     num <- 0
@@ -205,13 +202,14 @@ get_cluster_sizes <- function(arr){
   return (diff(sort(c(0, idx, length(arr)))))
 }
 
+
 quantify_importance <- function(x){
     df <- data.frame(c("4", "3", "2", "1"), stringsAsFactors = F)
     names(df) <- "group"
     if (length(x$cast)>3) { #there are 7 Rus and 15 Ger plays where length(x$cast)<=3
       for (col in names(x)[2:9]){
         df[col] <- get_cluster_sizes(unlist(c(x[col])))
-        #df[col]<- prop.table(df[col])
+        df[col]<- prop.table(df[col])
       }
   } else {
     for (col in names(x)[2:9]){
@@ -226,34 +224,35 @@ quartiles_df <- lapply(metrics_df, quantify_importance)
 names(quartiles_df) <- metadata$name
 
 quartiles_bind <- bind_rows(quartiles_df)
-percentages_df <- quartiles_bind %>% group_by(group) %>% summarise_all(funs(sum))
+percentages_df <- quartiles_bind %>% group_by(group) %>% summarise_all(list(~sum))
 #percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(471-15))
-percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(144-7))
+#percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(144-7))
 
+#CUT APPROACH
 
-
-
-
-
-download_slric_measures <- function(playname){
-  df <- read.csv(paste0("slric/", playname, ".csv"), stringsAsFactors = F)
-  df$X <- NULL
-  names(df) <- c("cast", "30_SRIC_EX", "30_Max", "50_SRIC_EX", "50_Max", "70_SRIC_EX", "70_Max")
-  df
-}
-
-slric_df <- lapply(sorted_ids, download_slric_measures)
-names(slric_df) <- metadata$name
-
-
-ranking_s <- function(x){
-  df <- data.frame(x$cast, stringsAsFactors = F)
-  for (col in names(x)[-1]){
-    df$t <- rank(-x[col], ties.method = "min")
-    names(df)[names(df) == 't'] <- paste0(col, "_rank")
+cut_quartiles <- function(x){
+  df <- data.frame(c("4", "3", "2", "1"), stringsAsFactors = F)
+  names(df) <- "group"
+  for (col in names(x)[2:9]){
+    adf <- as.data.frame(table(cut(unlist(c(x[col])), 4, labels = F)), stringsAsFactors = F)
+    adf$Var1 <- as.numeric(adf$Var1)
+    diff <- setdiff(c(1, 2, 3, 4), adf$Var1)
+    if (!is.null(diff)){
+      for (val in diff){
+        adf <- rbind(adf, c(val, 0))
+      }
+    }
+    adf <- adf[order(-adf$Var1), ]
+    df[col] <- adf$Freq
+    df[col]<- prop.table(df[col])
   }
-  return(df)
+  return (df)
 }
 
-ranked_slric_df <- lapply(slric_df, ranking_s)
-names(ranked_slric_df) <- metadata$name
+cut_quartiles_df <- lapply(metrics_df, cut_quartiles)
+names(cut_quartiles_df) <- metadata$name
+
+cut_quartiles_bind <- bind_rows(cut_quartiles_df)
+cut_percentages_df <- cut_quartiles_bind %>% group_by(group) %>% summarise_all(list(~sum))
+#percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(471-15))
+cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/471)
