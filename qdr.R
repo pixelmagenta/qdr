@@ -10,7 +10,7 @@ library("data.table")
 library("dplyr")
 library("rapportools")
 
-corpora <- "ger"
+corpora <- "rus"
 
 ## Download for new plays
 list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
@@ -79,6 +79,7 @@ plays <- mclapply(plays, del_vars)
 
 ## Creating graphs of plays
 graphs_of_plays <- mclapply(plays, function(x) graph_from_data_frame(x, directed = F))
+names(graphs_of_plays) <- metadata$name
 
 net_calc <- function(x){
   V(x)$betweenness <- betweenness(x, v = V(x), directed = F, weights = NA)
@@ -173,6 +174,7 @@ num_one <- function(x){
 }
 
 metadata$cor_coeff <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$text, ranks_df[[x]]$network, method = "spearman")$estimate[["rho"]])
+metadata$degree_vs_w_d <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$degree, ranks_df[[x]]$w_degree, method = "spearman")$estimate[["rho"]])
 #Correlation table for all eight metrics
 #cor(ranks_df[["pushkin-rusalka"]][2:9], method = "spearman")
 
@@ -254,5 +256,5 @@ names(cut_quartiles_df) <- metadata$name
 
 cut_quartiles_bind <- bind_rows(cut_quartiles_df)
 cut_percentages_df <- cut_quartiles_bind %>% group_by(group) %>% summarise_all(list(~sum))
-#percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(471-15))
+cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/(144))
 cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/471)
