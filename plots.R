@@ -49,14 +49,45 @@ percentages_plot <- ggplot(percentages_df2, aes(x=group, y=value, fill = group))
 
 percentages_plot + facet_wrap(percentages_df2$variable, nrow = 8) + ggtitle("GerDraCor")
 
-max(metrics_df[["chekhov-svadba"]]$eigenvector)
+ranking_for_plots <- function(x){
+  df <- data.frame(x$cast, stringsAsFactors = F)
+  for (col in names(x)[-1]){
+    df$t <- rank(x[col], ties.method = "last")
+    names(df)[names(df) == 't'] <- paste0(col, "_rank")
+  }
+  df$text <- rank(rowMeans(subset(df, select=c("num_words_rank", "num_sp_rank", "num_stages_rank"))), ties.method = "max")
+  df$network <- rank(rowMeans(subset(df, select=c("betweenness_rank", "closeness_rank", "w_degree_rank", "degree_rank", "eigenvector_rank"))), ties.method = "max")
+  df$overall <- rank(rowMeans(subset(df, select=c("network", "text"))), ties.method = "max")
+  names(df$x.cast) <- "cast"
+  return(df)
+}
 
-g <- graphs_of_plays[["pushkin-boris-godunov"]]
-V(g)$color <- kovesi.linear_bmy_10_95_c71(vcount(g))[V(g)$closeness*100]
-V(g)$frame.color = kovesi.linear_bmy_10_95_c71(vcount(g))[V(g)$closeness*100]
-V(g)$label.color <- "black"
-V(g)$label.cex <- 1.1
-V(g)$label.degree <- -pi/2
+plot_ranks_df <- lapply(metrics_df, ranking_for_plots)
+names(plot_ranks_df) <- metadata$name
+
+
+nice_layout_krylov_filomela <- l
+
+s <- "chekhov-tri-sestry"
+g <- graphs_of_plays[[s]]
 l <- layout_nicely(g)
-plot(g, vertex.label.dist = 1.3, vertex.size = 10, layout = l)
+View(metrics_df[[s]])
+View(ranks_df[[s]])
+View(plot_ranks_df[[s]])
 
+V(g)$color <- kovesi.linear_bmy_10_95_c71(max(metrics_df[[s]]$eigenvector*10))[V(g)$eigenvector]
+V(g)$frame.color = kovesi.linear_bmy_10_95_c71(max(metrics_df[[s]]$eigenvector*10))[V(g)$eigenvector]
+
+plot_colors <- kovesi.linear_bmy_10_95_c71(vcount(g))[V(g)$betweenness*10]
+
+plot_colors <- kovesi.linear_bmy_10_95_c71(length(unique(V(g)$closeness)))[V(g)$closeness*10]
+
+V(g)$color <- plot_colors
+V(g)$frame.color <- plot_colors
+
+V(g)$label.color <- "black"
+V(g)$label.cex <- 2.2
+V(g)$label.degree <- -pi/2
+plot(g, vertex.label.dist = 1.7, vertex.size = 15, layout = l)
+
+legend(x=-1, y=-0.5, legend = kovesi.linear_bmy_10_95_c71(vcount(g)), col = pal.bands(kovesi.linear_bmy_10_95_c71(vcount(g))))
