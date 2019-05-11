@@ -236,10 +236,15 @@ quantify_importance <- function(x){
         df[col]<- prop.table(df[col])
       }
   } else {
-    for (col in names(x)[2:9]){
-      df[col]<- c(0,0,0,0)
+    if (length(x$cast)==2) {
+      for (col in names(x)[2:9]){
+        df[col]<- c(1,1,0,0)
+      } else {
+        for (col in names(x)[2:9]){ #what to do with 3-characters plays?? divide them on three groups..?
+          df[col]<- c(0,0,0,0)      #and look attentively on 4-characters plays
+        }
+      }
     }
-    
   }
   return (df)
 }
