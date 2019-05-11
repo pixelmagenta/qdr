@@ -113,10 +113,11 @@ names(graphs_df) <- metadata$name
 unxml <- lapply(p_segments, function(x) xml_find_all(x, ".//sgm") %>% as_list)
 unl <- lapply(unxml, function(x) lapply(x, unlist))
 ununl <- lapply(unl, unlist)
+ununl <- lapply(ununl, function(x) paste0("{", x, "}"))
 names(ununl) <- metadata$name
 
 stages_func <- function(x, y){
-  sapply(x$cast, function (x) stri_count_fixed(y, x))
+  sapply(paste0("{", x$cast, "}"), function (x) stri_count_fixed(y, x))
 }
 
 stages <- lapply(names(plays_text), function(x) stages_func(plays_text[[x]], ununl[[x]]))
@@ -173,13 +174,34 @@ num_one <- function(x){
   return (num) 
 }
 
+search_of_examples <- function(x){
+  if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], num_words_rank != 1 && num_sp_rank == 1))) {
+    num <- 0
+  } else {
+    num <- ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast
+    #protagonists <- rbind(protagonists, c(x, ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast))
+  }
+  return (num) 
+}
+
+max_of_metric <- function(x){
+  if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], num_words_rank != 1 && num_sp_rank == 1))) {
+    num <- 0
+  } else {
+    num <- ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast
+    #protagonists <- rbind(protagonists, c(x, ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast))
+  }
+  return (num) 
+}
+
 metadata$cor_coeff <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$text, ranks_df[[x]]$network, method = "spearman")$estimate[["rho"]])
-metadata$degree_vs_w_d <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$degree, ranks_df[[x]]$w_degree, method = "spearman")$estimate[["rho"]])
+metadata$stages_vs_sp <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$num_sp_rank, ranks_df[[x]]$num_stages_rank, method = "spearman")$estimate[["rho"]])
 #Correlation table for all eight metrics
 #cor(ranks_df[["pushkin-rusalka"]][2:9], method = "spearman")
 
 metadata$num_one <- sapply(names(graphs_df), num_one)
-
+metadata$example <- sapply(names(graphs_df), search_of_examples)
+metadata$num_of_components <- sapply(graphs_of_plays, count_components)
 
 get_cluster_sizes <- function(arr){
   diffs <- diff(sort(arr))
@@ -256,5 +278,5 @@ names(cut_quartiles_df) <- metadata$name
 
 cut_quartiles_bind <- bind_rows(cut_quartiles_df)
 cut_percentages_df <- cut_quartiles_bind %>% group_by(group) %>% summarise_all(list(~sum))
-cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/(144))
+cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/144)
 cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/471)
