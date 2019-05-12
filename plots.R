@@ -9,15 +9,31 @@ library("pals")
 
 theme_set(theme_gray(base_size = 24))
 ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
-  geom_boxplot(na.rm = TRUE, color="darkblue", fill="lightblue", size = 1.5, outlier.shape = NA)+
-  geom_jitter(color="darkblue", fill="lightblue", size = 3)+
+  geom_boxplot(na.rm = TRUE, color="darkblue", fill="lightblue", size = 1.0, outlier.shape = NA)+
+  geom_jitter(color="darkblue", fill="lightblue", size = 2.8)+
   labs(x="Number of characters", y = "Correlation coefficient")+
-  ggtitle("Russian")+
+  #ggtitle("Russian")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+theme_set(theme_gray(base_size = 24))
+ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
+  geom_boxplot(na.rm = TRUE, color="royalblue4", fill="skyblue1", size = 1.0, outlier.shape = NA)+
+  geom_jitter(color="royalblue4", fill="skyblue1", size = 2.8)+
+  labs(x="Number of characters", y = "Correlation coefficient")+
+  #ggtitle("Russian")+
   theme(plot.title = element_text(hjust = 0.5))
 
 theme_set(theme_gray(base_size = 18))
 ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
-  geom_boxplot(na.rm = TRUE, color="seagreen4", fill="seagreen1", size = 0.9)+
+  geom_boxplot(na.rm = TRUE, color="aquamarine4", fill="aquamarine1", size = 0.9, outlier.shape = NA)+
+  geom_jitter(color="aquamarine4", fill="aquamarine1", size = 2.5)+
+  labs(x="Number of characters", y = "Correlation coefficient")+
+  ggtitle("German")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+theme_set(theme_gray(base_size = 18))
+ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
+  geom_boxplot(na.rm = TRUE, color="seagreen4", fill="seagreen1", size = 0.9, outlier.shape = NA)+
   geom_jitter(color="seagreen4", fill="seagreen1", size = 2.5)+
   labs(x="Number of characters", y = "Correlation coefficient")+
   ggtitle("German")+
@@ -25,7 +41,7 @@ ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
 
 
 
-percentages_df2 <- melt(cut_percentages_df, id.vars = c("group"))
+percentages_df2 <- melt(percentages_df, id.vars = c("group"))
 
 percentages_plot <- ggplot(percentages_df2, aes(x=group, y=value, fill = group)) + 
   geom_bar(stat = "identity") +
@@ -66,9 +82,7 @@ plot_ranks_df <- lapply(metrics_df, ranking_for_plots)
 names(plot_ranks_df) <- metadata$name
 
 
-nice_layout_krylov_filomela <- l
-
-s <- "chekhov-tri-sestry"
+s <- "krylov-filomela"
 g <- graphs_of_plays[[s]]
 l <- layout_nicely(g)
 View(metrics_df[[s]])
@@ -78,16 +92,18 @@ View(plot_ranks_df[[s]])
 V(g)$color <- kovesi.linear_bmy_10_95_c71(max(metrics_df[[s]]$eigenvector*10))[V(g)$eigenvector]
 V(g)$frame.color = kovesi.linear_bmy_10_95_c71(max(metrics_df[[s]]$eigenvector*10))[V(g)$eigenvector]
 
-plot_colors <- kovesi.linear_bmy_10_95_c71(vcount(g))[V(g)$betweenness*10]
+plot_colors <- kovesi.linear_bmy_10_95_c71(max(metrics_df[[s]]$betweenness*10))[V(g)$betweenness*10]
 
-plot_colors <- kovesi.linear_bmy_10_95_c71(length(unique(V(g)$closeness)))[V(g)$closeness*10]
+plot_colors <- kovesi.linear_bmy_10_95_c71(vcount(g))[V(g)$degree]
 
 V(g)$color <- plot_colors
 V(g)$frame.color <- plot_colors
 
 V(g)$label.color <- "black"
-V(g)$label.cex <- 2.2
+V(g)$label.cex <- 1.1
 V(g)$label.degree <- -pi/2
-plot(g, vertex.label.dist = 1.7, vertex.size = 15, layout = l)
+plot(g, vertex.label.dist = 1.3, vertex.size = 10, layout = l)
 
 legend(x=-1, y=-0.5, legend = kovesi.linear_bmy_10_95_c71(vcount(g)), col = pal.bands(kovesi.linear_bmy_10_95_c71(vcount(g))))
+
+write.csv(l, file = paste0("layout_", s, ".csv"))
