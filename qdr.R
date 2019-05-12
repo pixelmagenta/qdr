@@ -203,6 +203,8 @@ metadata$num_one <- sapply(names(graphs_df), num_one)
 metadata$example <- sapply(names(graphs_df), search_of_examples)
 metadata$num_of_components <- sapply(graphs_of_plays, count_components)
 
+
+
 get_cluster_sizes <- function(arr){
   diffs <- diff(sort(arr))
   # compute 3 max diffs between subsequent pairs
@@ -227,25 +229,33 @@ get_cluster_sizes <- function(arr){
 }
 
 
+get_cluster_sizes2.0 <- function(arr){
+  if (length(unique(arr)) > 3){
+    return (get_cluster_sizes(arr))
+  } else {
+    
+  }
+}
+
 quantify_importance <- function(x){
     df <- data.frame(c("4", "3", "2", "1"), stringsAsFactors = F)
     names(df) <- "group"
     if (length(x$cast)>3) { #there are 7 Rus and 15 Ger plays where length(x$cast)<=3
       for (col in names(x)[2:9]){
         df[col] <- get_cluster_sizes(unlist(c(x[col])))
-        df[col]<- prop.table(df[col])
+        #df[col]<- prop.table(df[col])
       }
   } else {
     if (length(x$cast)==2) {
       for (col in names(x)[2:9]){
         df[col]<- c(1,1,0,0)
+        }
       } else {
-        for (col in names(x)[2:9]){ #what to do with 3-characters plays?? divide them on three groups..?
-          df[col]<- c(0,0,0,0)      #and look attentively on 4-characters plays
+        for (col in names(x)[2:9]){
+          df[col]<- c(0,0,0,0)
         }
       }
     }
-  }
   return (df)
 }
 
@@ -254,8 +264,8 @@ names(quartiles_df) <- metadata$name
 
 quartiles_bind <- bind_rows(quartiles_df)
 percentages_df <- quartiles_bind %>% group_by(group) %>% summarise_all(list(~sum))
-#percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(471-15))
-#percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/(144-7))
+#percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/471)
+percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/144)
 
 #CUT APPROACH
 
@@ -285,3 +295,9 @@ cut_quartiles_bind <- bind_rows(cut_quartiles_df)
 cut_percentages_df <- cut_quartiles_bind %>% group_by(group) %>% summarise_all(list(~sum))
 cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/144)
 cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/471)
+
+major_group_df <- data.frame(metadata$name, metadata$year, stringsAsFactors = F)
+names(major_group_df) <- c("name", "year")
+major_group_df$degree <- sapply(major_group_df$name, function (x) quartiles_df[[x]][["degree"]][1])
+
+
