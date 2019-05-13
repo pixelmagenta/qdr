@@ -174,7 +174,7 @@ num_one <- function(x){
   return (num) 
 }
 
-search_of_examples <- function(x){
+search_for_examples <- function(x){
   if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], num_words_rank != 1 && num_sp_rank == 1))) {
     num <- 0
   } else {
@@ -205,7 +205,7 @@ metadata$num_of_components <- sapply(graphs_of_plays, count_components)
 
 
 
-get_cluster_sizes <- function(arr){
+get_cluster_sizes_3max <- function(arr){
   diffs <- diff(sort(arr))
   # compute 3 max diffs between subsequent pairs
   maxs <-  c(-1, -1, -1)
@@ -224,37 +224,49 @@ get_cluster_sizes <- function(arr){
     } 
     i <- i + 1
   }
-  # return number of elements in each partition
+  # return number of elements in each group
   return (diff(sort(c(0, idx, length(arr)))))
 }
 
 
-get_cluster_sizes2.0 <- function(arr){
+get_cluster_sizes <- function(arr){
   if (length(unique(arr)) > 3){
-    return (get_cluster_sizes(arr))
+    return (get_cluster_sizes_3max(arr))
   } else {
-    
+    diffs <- diff(sort(arr))
+    # compute 2 max diffs between subsequent pairs
+    maxs <-  c(-1, -1)
+    idx <-  c(-1, -1)
+    i <- 1
+    for (d in rev(diffs)){
+      if (d > maxs[1]) {
+        maxs = c(d, maxs[1])
+        idx = c(i, idx[1])
+      } else if (d > maxs[2]) {
+        maxs[2] <- d
+        idx[2] <- i
+      } 
+      i <- i + 1
+    }
+    # return number of elements in each group
+    # hack: append max index twice (in idx and idx[1]) to create an empty group
+    return (diff(sort(c(0, idx, idx[1], length(arr)))))
   }
 }
 
 quantify_importance <- function(x){
     df <- data.frame(c("4", "3", "2", "1"), stringsAsFactors = F)
     names(df) <- "group"
-    if (length(x$cast)>3) { #there are 7 Rus and 15 Ger plays where length(x$cast)<=3
+    if (length(x$cast) != 2) { #there are 7 Rus and 15 Ger plays where length(x$cast)<=3
       for (col in names(x)[2:9]){
         df[col] <- get_cluster_sizes(unlist(c(x[col])))
-        #df[col]<- prop.table(df[col])
+        df[col]<- prop.table(df[col])
       }
   } else {
-    if (length(x$cast)==2) {
       for (col in names(x)[2:9]){
         df[col]<- c(1,1,0,0)
+        df[col]<- prop.table(df[col])
         }
-      } else {
-        for (col in names(x)[2:9]){
-          df[col]<- c(0,0,0,0)
-        }
-      }
     }
   return (df)
 }
@@ -264,8 +276,7 @@ names(quartiles_df) <- metadata$name
 
 quartiles_bind <- bind_rows(quartiles_df)
 percentages_df <- quartiles_bind %>% group_by(group) %>% summarise_all(list(~sum))
-#percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/471)
-percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/144)
+percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/length(metadata$name))
 
 #CUT APPROACH
 
@@ -293,11 +304,10 @@ names(cut_quartiles_df) <- metadata$name
 
 cut_quartiles_bind <- bind_rows(cut_quartiles_df)
 cut_percentages_df <- cut_quartiles_bind %>% group_by(group) %>% summarise_all(list(~sum))
-cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/144)
-cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/471)
+cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/length(metadata$name))
 
 major_group_df <- data.frame(metadata$name, metadata$year, stringsAsFactors = F)
 names(major_group_df) <- c("name", "year")
+major_group_df$year <- paste0(substr(major_group_df$year, 1,3), "0")
 major_group_df$degree <- sapply(major_group_df$name, function (x) quartiles_df[[x]][["degree"]][1])
-
-
+major_group_df$num_words <- sapply(major_group_df$name, function (x) quartiles_df[[x]][["num_words"]][1])
