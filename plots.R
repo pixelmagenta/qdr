@@ -65,6 +65,13 @@ percentages_plot <- ggplot(percentages_df2, aes(x=group, y=value, fill = group))
 
 percentages_plot + facet_wrap(percentages_df2$variable, nrow = 8) + ggtitle("GerDraCor")
 
+ggplot(major_group_df, aes(x=year, y=degree)) + geom_boxplot()
+ggplot(major_group_df, aes(x=year, y=num_words)) + geom_boxplot()
+
+
+
+
+
 ranking_for_plots <- function(x){
   df <- data.frame(x$cast, stringsAsFactors = F)
   for (col in names(x)[-1]){
