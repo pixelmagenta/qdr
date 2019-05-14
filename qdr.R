@@ -10,7 +10,7 @@ library("data.table")
 library("dplyr")
 library("rapportools")
 
-corpora <- "rus"
+corpora <- "ger"
 
 ## Download for new plays
 list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
@@ -20,7 +20,7 @@ sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
 #sorted_ids <- df_sorted_ids$x
 
 download_plays <- function(playname){
-  if (!file.exists(paste0("csv/", playname, ".csv"))) {
+  if (!file.exists(paste0("csv/", corpora, "/", playname, ".csv"))) {
     download.file(paste0("https://dracor.org/api/corpora/", corpora, "/play/", playname, "/networkdata/csv"), paste0("csv/", playname, ".csv"))
   }
   read.csv(paste0("csv/", playname, ".csv"), stringsAsFactors = F)
@@ -147,16 +147,16 @@ del_name <- function(df){
 }
 
 metrics_df <- lapply(metrics_df, del_name)
-
+#!!!!!!!!!!!!!!!!!!!! ties.method "min" or "average"???
 ranking <- function(x){
   df <- data.frame(x$cast, stringsAsFactors = F)
   for (col in names(x)[-1]){
-    df$t <- rank(-x[col], ties.method = "min")
+    df$t <- rank(-x[col], ties.method = "average")
     names(df)[names(df) == 't'] <- paste0(col, "_rank")
   }
-  df$text <- rank(rowMeans(subset(df, select=c("num_words_rank", "num_sp_rank", "num_stages_rank"))), ties.method = "min")
-  df$network <- rank(rowMeans(subset(df, select=c("betweenness_rank", "closeness_rank", "w_degree_rank", "degree_rank", "eigenvector_rank"))), ties.method = "min")
-  df$overall <- rank(rowMeans(subset(df, select=c("network", "text"))), ties.method = "min")
+  df$text <- rank(rowMeans(subset(df, select=c("num_words_rank", "num_sp_rank", "num_stages_rank"))), ties.method = "average")
+  df$network <- rank(rowMeans(subset(df, select=c("betweenness_rank", "closeness_rank", "w_degree_rank", "degree_rank", "eigenvector_rank"))), ties.method = "average")
+  df$overall <- rank(rowMeans(subset(df, select=c("network", "text"))), ties.method = "average")
   names(df$x.cast) <- "cast"
   return(df)
 }
@@ -194,7 +194,7 @@ max_of_metric <- function(x){
   return (num) 
 }
 
-metadata$cor_coeff <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$text, ranks_df[[x]]$network, method = "spearman")$estimate[["rho"]])
+metadata$cor_coeff2 <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$text, ranks_df[[x]]$network, method = "spearman", exact = FALSE)$estimate[["rho"]])
 metadata$stages_vs_sp <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$num_sp_rank, ranks_df[[x]]$num_stages_rank, method = "spearman")$estimate[["rho"]])
 #Correlation table for all eight metrics
 #cor(ranks_df[["pushkin-rusalka"]][2:9], method = "spearman")
