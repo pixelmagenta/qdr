@@ -23,10 +23,10 @@ ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
   #ggtitle("Russian")+
   theme(plot.title = element_text(hjust = 0.5))
 
-theme_set(theme_gray(base_size = 18))
+theme_set(theme_gray(base_size = 24))
 ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
-  geom_boxplot(na.rm = TRUE, color="aquamarine4", fill="aquamarine1", size = 0.9, outlier.shape = NA)+
-  geom_jitter(color="aquamarine4", fill="aquamarine1", size = 2.5)+
+  geom_boxplot(na.rm = TRUE, color="aquamarine4", fill="aquamarine1", size = 1.0, outlier.shape = NA)+
+  geom_jitter(color="aquamarine4", fill="aquamarine1", size = 2.4)+
   labs(x="Number of characters", y = "Correlation coefficient")+
   ggtitle("German")+
   theme(plot.title = element_text(hjust = 0.5))
@@ -65,7 +65,8 @@ percentages_plot <- ggplot(percentages_df2, aes(x=group, y=value, fill = group))
 
 percentages_plot + facet_wrap(percentages_df2$variable, nrow = 8) + ggtitle("GerDraCor")
 
-ggplot(major_group_df, aes(x=year, y=degree)) + geom_boxplot()
+theme_set(theme_gray(base_size = 18))
+ggplot(major_group_df, aes(x=year, y=degree)) + geom_boxplot() + ggtitle("GerDraCor")
 ggplot(major_group_df, aes(x=year, y=num_words)) + geom_boxplot()
 
 
