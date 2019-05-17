@@ -10,7 +10,7 @@ library("data.table")
 library("dplyr")
 library("rapportools")
 
-corpora <- "ger"
+corpora <- "rus"
 
 ## Download for new plays
 list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
@@ -37,7 +37,7 @@ metadata <- read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/metada
 
 #metadata <- read.csv(file="rus_metadata144.csv", stringsAsFactors = F)
 metadata$X <- NULL
-metadata[,7:20] <- NULL
+metadata[,7:17] <- NULL
 metadata <- metadata[order(metadata$name),]
 ## metadata <- metadata[metadata$name != plays_to_remove,] ## removing of plays which do not represent social interactions
 
@@ -151,12 +151,12 @@ metrics_df <- lapply(metrics_df, del_name)
 ranking <- function(x){
   df <- data.frame(x$cast, stringsAsFactors = F)
   for (col in names(x)[-1]){
-    df$t <- rank(-x[col], ties.method = "average")
+    df$t <- rank(-x[col], ties.method = "min")
     names(df)[names(df) == 't'] <- paste0(col, "_rank")
   }
-  df$text <- rank(rowMeans(subset(df, select=c("num_words_rank", "num_sp_rank", "num_stages_rank"))), ties.method = "average")
-  df$network <- rank(rowMeans(subset(df, select=c("betweenness_rank", "closeness_rank", "w_degree_rank", "degree_rank", "eigenvector_rank"))), ties.method = "average")
-  df$overall <- rank(rowMeans(subset(df, select=c("network", "text"))), ties.method = "average")
+  df$text <- rank(rowMeans(subset(df, select=c("num_words_rank", "num_sp_rank", "num_stages_rank"))), ties.method = "min")
+  df$network <- rank(rowMeans(subset(df, select=c("betweenness_rank", "closeness_rank", "w_degree_rank", "degree_rank", "eigenvector_rank"))), ties.method = "min")
+  df$overall <- rank(rowMeans(subset(df, select=c("network", "text"))), ties.method = "min")
   names(df$x.cast) <- "cast"
   return(df)
 }
@@ -168,7 +168,19 @@ num_one <- function(x){
   if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], num_words_rank==1 & num_sp_rank==1 & num_stages_rank==1 & betweenness_rank==1 & closeness_rank==1 & w_degree_rank==1 & degree_rank==1 & eigenvector_rank==1))) {
     num <- 0
   } else {
-    num <- ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast
+    #num <- ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast
+    num <- 1
+    #protagonists <- rbind(protagonists, c(x, ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast))
+  }
+  return (num) 
+}
+
+num_two <- function(x){
+  if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], num_words_rank %in% c(1, 2) & num_sp_rank==1 & num_stages_rank==1 & betweenness_rank==1 & closeness_rank==1 & w_degree_rank==1 & degree_rank==1 & eigenvector_rank==1))) {
+    num <- 0
+  } else {
+    #num <- ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast
+    num <- 1
     #protagonists <- rbind(protagonists, c(x, ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast))
   }
   return (num) 
@@ -194,12 +206,13 @@ max_of_metric <- function(x){
   return (num) 
 }
 
-metadata$cor_coeff2 <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$text, ranks_df[[x]]$network, method = "spearman", exact = FALSE)$estimate[["rho"]])
+metadata$cor_coeff <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$text, ranks_df[[x]]$network, method = "spearman", exact = FALSE)$estimate[["rho"]])
 metadata$stages_vs_sp <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[x]]$num_sp_rank, ranks_df[[x]]$num_stages_rank, method = "spearman")$estimate[["rho"]])
 #Correlation table for all eight metrics
 #cor(ranks_df[["pushkin-rusalka"]][2:9], method = "spearman")
 
 metadata$num_one <- sapply(names(graphs_df), num_one)
+metadata$num_two <- sapply(names(graphs_df), num_two)
 metadata$example <- sapply(names(graphs_df), search_of_examples)
 metadata$num_of_components <- sapply(graphs_of_plays, count_components)
 
@@ -255,7 +268,7 @@ get_cluster_sizes <- function(arr){
 }
 
 quantify_importance <- function(x){
-    df <- data.frame(c("4", "3", "2", "1"), stringsAsFactors = F)
+    df <- data.frame(ordered(c("Major", "Minor Major", "Major Minor", "Minor"), levels = c("Minor", "Major Minor", "Minor Major", "Major")))
     names(df) <- "group"
     if (length(x$cast) != 2) { #there are 7 Rus and 15 Ger plays where length(x$cast)<=3
       for (col in names(x)[2:9]){
@@ -306,8 +319,11 @@ cut_quartiles_bind <- bind_rows(cut_quartiles_df)
 cut_percentages_df <- cut_quartiles_bind %>% group_by(group) %>% summarise_all(list(~sum))
 cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/length(metadata$name))
 
-major_group_df <- data.frame(metadata$name, metadata$year, stringsAsFactors = F)
+major_group_df <- data.frame(metadata$name, metadata$year, metadata$numOfSpeakers, stringsAsFactors = F)
 names(major_group_df) <- c("name", "year")
 major_group_df$year <- paste0(substr(major_group_df$year, 1,3), "0")
+major_group_df[major_group_df$year == 1740, ]$year <- 1750
+major_group_df[major_group_df$year == 1940, ]$year <- 1930
 major_group_df$degree <- sapply(major_group_df$name, function (x) quartiles_df[[x]][["degree"]][1])
 major_group_df$num_words <- sapply(major_group_df$name, function (x) quartiles_df[[x]][["num_words"]][1])
+
