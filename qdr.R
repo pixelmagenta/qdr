@@ -16,14 +16,16 @@ corpora <- "rus"
 list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
 sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
 
-#df_sorted_ids <- read.csv(file="rus_listofnames144.csv", stringsAsFactors = F)
+
+##Take saved 155 plays
+#df_sorted_ids <- read.csv(file="rus_listofnames155.csv", stringsAsFactors = F)
 #sorted_ids <- df_sorted_ids$x
 
 download_plays <- function(playname){
   if (!file.exists(paste0("csv/", corpora, "/", playname, ".csv"))) {
-    download.file(paste0("https://dracor.org/api/corpora/", corpora, "/play/", playname, "/networkdata/csv"), paste0("csv/", playname, ".csv"))
+    download.file(paste0("https://dracor.org/api/corpora/", corpora, "/play/", playname, "/networkdata/csv"), paste0("csv/", corpora, "/", playname, ".csv"))
   }
-  read.csv(paste0("csv/", playname, ".csv"), stringsAsFactors = F)
+  read.csv(paste0("csv/", corpora, "/", playname, ".csv"), stringsAsFactors = F)
 }
 
 plays <- lapply(sorted_ids, download_plays)
@@ -35,9 +37,12 @@ p_segments <- lapply(sorted_ids, function(x) read_xml(paste0("https://dracor.org
 
 metadata <- read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/metadata.csv"), stringsAsFactors = F) #to update
 
-#metadata <- read.csv(file="rus_metadata144.csv", stringsAsFactors = F)
+#write.csv(metadata2, file = "rus_metadata155.csv")
+
+#metadata <- read.csv(file="rus_metadata155.csv", stringsAsFactors = F)
+
 metadata$X <- NULL
-metadata[,7:17] <- NULL
+metadata[,7:20] <- NULL
 metadata <- metadata[order(metadata$name),]
 ## metadata <- metadata[metadata$name != plays_to_remove,] ## removing of plays which do not represent social interactions
 
@@ -89,6 +94,7 @@ net_calc <- function(x){
   V(x)$degree <- degree(x)
   V(x)$eigenvector <- round(eigen_centrality(x, weights = NA)$vector, digits = 7)
   #V(x)$eigenvector <- round(eigen_centrality(x)$vector, digits = 7) nooo
+  #x <- x[order(x$name), ]
   x
 }
 
@@ -147,9 +153,10 @@ del_name <- function(df){
 }
 
 metrics_df <- lapply(metrics_df, del_name)
+
 #!!!!!!!!!!!!!!!!!!!! ties.method "min" or "average"???
 ranking <- function(x){
-  df <- data.frame(x$cast, stringsAsFactors = F)
+  df <- data.frame(x$cast, stringsAsFactors = F) #!!!!!!!!!!!cast
   for (col in names(x)[-1]){
     df$t <- rank(-x[col], ties.method = "min")
     names(df)[names(df) == 't'] <- paste0(col, "_rank")
@@ -157,6 +164,7 @@ ranking <- function(x){
   df$text <- rank(rowMeans(subset(df, select=c("num_words_rank", "num_sp_rank", "num_stages_rank"))), ties.method = "min")
   df$network <- rank(rowMeans(subset(df, select=c("betweenness_rank", "closeness_rank", "w_degree_rank", "degree_rank", "eigenvector_rank"))), ties.method = "min")
   df$overall <- rank(rowMeans(subset(df, select=c("network", "text"))), ties.method = "min")
+  df$sum <- rowSums(df[2:9])
   names(df$x.cast) <- "cast"
   return(df)
 }
@@ -175,8 +183,8 @@ num_one <- function(x){
   return (num) 
 }
 
-num_two <- function(x){
-  if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], num_words_rank %in% c(1, 2) & num_sp_rank==1 & num_stages_rank==1 & betweenness_rank==1 & closeness_rank==1 & w_degree_rank==1 & degree_rank==1 & eigenvector_rank==1))) {
+num_one2 <- function(x){
+  if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], sum==9))) {
     num <- 0
   } else {
     #num <- ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast
@@ -212,7 +220,7 @@ metadata$stages_vs_sp <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[
 #cor(ranks_df[["pushkin-rusalka"]][2:9], method = "spearman")
 
 metadata$num_one <- sapply(names(graphs_df), num_one)
-metadata$num_two <- sapply(names(graphs_df), num_two)
+metadata$num_one2 <- sapply(names(graphs_df), num_one2)
 metadata$example <- sapply(names(graphs_df), search_of_examples)
 metadata$num_of_components <- sapply(graphs_of_plays, count_components)
 
@@ -277,7 +285,7 @@ quantify_importance <- function(x){
       }
   } else {
       for (col in names(x)[2:9]){
-        df[col]<- c(1,1,0,0)
+        df[col]<- c(2,0,0,0)
         df[col]<- prop.table(df[col])
         }
     }
@@ -294,7 +302,7 @@ percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/length(metada
 #CUT APPROACH
 
 cut_quartiles <- function(x){
-  df <- data.frame(c("4", "3", "2", "1"), stringsAsFactors = F)
+  df <- data.frame(ordered(c("Major", "Minor Major", "Major Minor", "Minor"), levels = c("Minor", "Major Minor", "Minor Major", "Major")))
   names(df) <- "group"
   for (col in names(x)[2:9]){
     adf <- as.data.frame(table(cut(unlist(c(x[col])), 4, labels = F)), stringsAsFactors = F)
@@ -319,11 +327,23 @@ cut_quartiles_bind <- bind_rows(cut_quartiles_df)
 cut_percentages_df <- cut_quartiles_bind %>% group_by(group) %>% summarise_all(list(~sum))
 cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/length(metadata$name))
 
+
+
 major_group_df <- data.frame(metadata$name, metadata$year, metadata$numOfSpeakers, stringsAsFactors = F)
-names(major_group_df) <- c("name", "year")
+names(major_group_df) <- c("name", "year", "numOfSpeakers")
 major_group_df$year <- paste0(substr(major_group_df$year, 1,3), "0")
 major_group_df[major_group_df$year == 1740, ]$year <- 1750
 major_group_df[major_group_df$year == 1940, ]$year <- 1930
-major_group_df$degree <- sapply(major_group_df$name, function (x) quartiles_df[[x]][["degree"]][1])
-major_group_df$num_words <- sapply(major_group_df$name, function (x) quartiles_df[[x]][["num_words"]][1])
+#major_group_df[major_group_df$year == 1930, ]$year <- 1920
+major_group_df$degree <- sapply(major_group_df$name, function (x) quartiles_df[[x]][["degree"]][1]*100)
+major_group_df$num_words <- sapply(major_group_df$name, function (x) quartiles_df[[x]][["num_words"]][1]*100)
+
+major_group_df$cut_degree <- sapply(major_group_df$name, function (x) cut_quartiles_df[[x]][["degree"]][1]*100)
+major_group_df$cut_num_words <- sapply(major_group_df$name, function (x) cut_quartiles_df[[x]][["num_words"]][1]*100)
+
+
+tsar_boris <- decompose.graph(graphs_of_plays[["tolstoy-tsar-boris"]])
+
+
+delo <- data.frame(metrics_df[["sukhovo-kobylin-delo"]]$cast, metrics_df[["sukhovo-kobylin-delo"]]$degree)
 
