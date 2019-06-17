@@ -16,10 +16,11 @@ corpora <- "rus"
 list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
 sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
 
+#write.csv(sorted_ids, file = "rus_listofnames160.csv")
 
-##Take saved 155 plays
-#df_sorted_ids <- read.csv(file="rus_listofnames155.csv", stringsAsFactors = F)
-#sorted_ids <- df_sorted_ids$x
+#Take saved 160 plays
+df_sorted_ids <- read.csv(file="rus_listofnames160.csv", stringsAsFactors = F)
+sorted_ids <- df_sorted_ids$x
 
 download_plays <- function(playname){
   if (!file.exists(paste0("csv/", corpora, "/", playname, ".csv"))) {
@@ -37,12 +38,12 @@ p_segments <- lapply(sorted_ids, function(x) read_xml(paste0("https://dracor.org
 
 metadata <- read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/metadata.csv"), stringsAsFactors = F) #to update
 
-#write.csv(metadata2, file = "rus_metadata155.csv")
+#write.csv(metadata, file = "rus_metadata160.csv")
 
-#metadata <- read.csv(file="rus_metadata155.csv", stringsAsFactors = F)
+metadata <- read.csv(file="rus_metadata160.csv", stringsAsFactors = F)
 
 metadata$X <- NULL
-metadata[,7:20] <- NULL
+metadata[,7:16] <- NULL
 metadata <- metadata[order(metadata$name),]
 ## metadata <- metadata[metadata$name != plays_to_remove,] ## removing of plays which do not represent social interactions
 
@@ -176,8 +177,8 @@ num_one <- function(x){
   if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], num_words_rank==1 & num_sp_rank==1 & num_stages_rank==1 & betweenness_rank==1 & closeness_rank==1 & w_degree_rank==1 & degree_rank==1 & eigenvector_rank==1))) {
     num <- 0
   } else {
-    #num <- ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast
-    num <- 1
+    num <- ranks_df[[x]][ranks_df[[x]]$sum == 8,]$x.cast
+    #num <- 1
     #protagonists <- rbind(protagonists, c(x, ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast))
   }
   return (num) 
@@ -187,15 +188,15 @@ num_one2 <- function(x){
   if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], sum==9))) {
     num <- 0
   } else {
-    #num <- ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast
-    num <- 1
+    num <- ranks_df[[x]][ranks_df[[x]]$sum == 9,]$x.cast
+    #num <- 1
     #protagonists <- rbind(protagonists, c(x, ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast))
   }
   return (num) 
 }
 
 search_for_examples <- function(x){
-  if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], num_words_rank != 1 && num_sp_rank == 1))) {
+  if (rapportools::is.empty(dplyr::filter(ranks_df[[x]], network==1 & text!=1))) {
     num <- 0
   } else {
     num <- ranks_df[[x]][ranks_df[[x]]$num_words_rank == 1,]$x.cast
@@ -221,7 +222,7 @@ metadata$stages_vs_sp <- sapply(names(ranks_df), function(x) cor.test(ranks_df[[
 
 metadata$num_one <- sapply(names(graphs_df), num_one)
 metadata$num_one2 <- sapply(names(graphs_df), num_one2)
-metadata$example <- sapply(names(graphs_df), search_of_examples)
+metadata$example <- sapply(names(graphs_df), search_for_examples)
 metadata$num_of_components <- sapply(graphs_of_plays, count_components)
 
 
@@ -302,7 +303,8 @@ percentages_df <- cbind(percentages_df[1], percentages_df[2:9]*100/length(metada
 #CUT APPROACH
 
 cut_quartiles <- function(x){
-  df <- data.frame(ordered(c("Major", "Minor Major", "Major Minor", "Minor"), levels = c("Minor", "Major Minor", "Minor Major", "Major")))
+  df <- data.frame(ordered(c("I", "II", "III", "IV"), levels = c("IV", "III", "II", "I")))
+  #df <- data.frame(ordered(c("Major", "Minor Major", "Major Minor", "Minor"), levels = c("Minor", "Major Minor", "Minor Major", "Major")))
   names(df) <- "group"
   for (col in names(x)[2:9]){
     adf <- as.data.frame(table(cut(unlist(c(x[col])), 4, labels = F)), stringsAsFactors = F)
@@ -338,8 +340,15 @@ major_group_df[major_group_df$year == 1940, ]$year <- 1930
 major_group_df$degree <- sapply(major_group_df$name, function (x) quartiles_df[[x]][["degree"]][1]*100)
 major_group_df$num_words <- sapply(major_group_df$name, function (x) quartiles_df[[x]][["num_words"]][1]*100)
 
+#major_group_df$cut_degree2 <- sapply(major_group_df$name, function (x) cut_quartiles_df[[x]][["degree"]][3]*100)
 major_group_df$cut_degree <- sapply(major_group_df$name, function (x) cut_quartiles_df[[x]][["degree"]][1]*100)
 major_group_df$cut_num_words <- sapply(major_group_df$name, function (x) cut_quartiles_df[[x]][["num_words"]][1]*100)
+major_group_df$cut_num_sp <- sapply(major_group_df$name, function (x) cut_quartiles_df[[x]][["num_sp"]][1]*100)
+major_group_df$cut_num_stages <- sapply(major_group_df$name, function (x) cut_quartiles_df[[x]][["num_stages"]][1]*100)
+major_group_df$cut_closeness <- sapply(major_group_df$name, function (x) cut_quartiles_df[[x]][["closeness"]][1]*100)
+major_group_df$cut_w_degree <- sapply(major_group_df$name, function (x) cut_quartiles_df[[x]][["w_degree"]][1]*100)
+major_group_df$cut_eigenvector <- sapply(major_group_df$name, function (x) cut_quartiles_df[[x]][["eigenvector"]][1]*100)
+major_group_df$cut_betweenness <- sapply(major_group_df$name, function (x) cut_quartiles_df[[x]][["betweenness"]][1]*100)
 
 
 tsar_boris <- decompose.graph(graphs_of_plays[["tolstoy-tsar-boris"]])
