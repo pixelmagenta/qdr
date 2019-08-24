@@ -6,7 +6,7 @@ library("ggplot2")
 library("parallel")
 library("xml2")
 library("magrittr")
-library("data.table")
+#library("data.table")
 library("dplyr")
 library("rapportools")
 
@@ -14,7 +14,7 @@ corpora <- "rus"
 
 ## Download for new plays
 list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
-sorted_ids <- list_of_names$dramas$id[sort.list(list_of_names$dramas$id)]
+sorted_ids <- list_of_names$dramas$name[sort.list(list_of_names$dramas$name)]
 
 #write.csv(sorted_ids, file = "rus_listofnames160.csv")
 
@@ -40,7 +40,7 @@ metadata <- read.csv(paste0("https://dracor.org/api/corpora/", corpora, "/metada
 
 #write.csv(metadata, file = "rus_metadata160.csv")
 
-metadata <- read.csv(file="rus_metadata160.csv", stringsAsFactors = F)
+#metadata <- read.csv(file="rus_metadata160.csv", stringsAsFactors = F)
 
 metadata$X <- NULL
 metadata[,7:16] <- NULL
@@ -326,6 +326,9 @@ cut_quartiles_df <- lapply(metrics_df, cut_quartiles)
 names(cut_quartiles_df) <- metadata$name
 
 cut_quartiles_bind <- bind_rows(cut_quartiles_df)
+#cut_quartiles_groups <- cut_quartiles_bind %>% group_by(group)
+#attr(cut_quartiles_groups$num_words, "groups") <- NULL
+#cut_percentages_df <- cut_quartiles_groups %>% summarise_all(list(~sum)) Похоже что надо как-то убрать аттрибуты
 cut_percentages_df <- cut_quartiles_bind %>% group_by(group) %>% summarise_all(list(~sum))
 cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/length(metadata$name))
 
