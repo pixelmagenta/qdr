@@ -10,7 +10,8 @@ library("magrittr")
 library("dplyr")
 library("rapportools")
 
-corpora <- "rus"
+
+corpora <- "ger"
 
 ## Download for new plays
 list_of_names <- fromJSON(paste0("https://dracor.org/api/corpora/", corpora))
@@ -19,8 +20,8 @@ sorted_ids <- list_of_names$dramas$name[sort.list(list_of_names$dramas$name)]
 #write.csv(sorted_ids, file = "rus_listofnames160.csv")
 
 #Take saved 160 plays
-df_sorted_ids <- read.csv(file="rus_listofnames160.csv", stringsAsFactors = F)
-sorted_ids <- df_sorted_ids$x
+#df_sorted_ids <- read.csv(file="rus_listofnames160.csv", stringsAsFactors = F)
+#sorted_ids <- df_sorted_ids$x
 
 download_plays <- function(playname){
   if (!file.exists(paste0("csv/", corpora, "/", playname, ".csv"))) {
@@ -326,13 +327,18 @@ cut_quartiles_df <- lapply(metrics_df, cut_quartiles)
 names(cut_quartiles_df) <- metadata$name
 
 cut_quartiles_bind <- bind_rows(cut_quartiles_df)
-#cut_quartiles_groups <- cut_quartiles_bind %>% group_by(group)
-#attr(cut_quartiles_groups$num_words, "groups") <- NULL
+cut_quartiles_groups <- cut_quartiles_bind %>% group_by(group)
+attr(cut_quartiles_groups$num_words, "groups") <- NULL
 #cut_percentages_df <- cut_quartiles_groups %>% summarise_all(list(~sum)) Похоже что надо как-то убрать аттрибуты
 cut_percentages_df <- cut_quartiles_bind %>% group_by(group) %>% summarise_all(list(~sum))
 cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/length(metadata$name))
 
+cut_quartiles_sumz <- summarize(cut_quartiles_bind, llist(cut_quartiles_bind$group), sum)
+cut_quartiles_groups2 <- group_by(cut_quartiles_bind, group)
+summarise(cut_quartiles_groups2, )
 
+cut_percentages_df <- aggregate(. ~ group, cut_quartiles_bind, sum)
+cut_percentages_df <- cbind(cut_percentages_df[1], cut_percentages_df[2:9]*100/length(metadata$name))
 
 major_group_df <- data.frame(metadata$name, metadata$year, metadata$numOfSpeakers, stringsAsFactors = F)
 names(major_group_df) <- c("name", "year", "numOfSpeakers")
