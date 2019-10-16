@@ -1,16 +1,14 @@
 library("ggplot2")
 #library("wesanderson")
 #library("Redmonder")
-library("rcartocolor")
+#library("rcartocolor")
 library("gridExtra")
 library("reshape")
 library("ggsci")
-library("pals")
+#library("pals")
 library("ggpubr")
-#library("SDMTools")
-#library("plotfunctions")
-library("svglite")
-
+library("SDMTools")
+library("plotfunctions")
 
 theme_set(theme_minimal(base_size = 28))
 
@@ -21,8 +19,9 @@ cor_coeff_plot <- ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_
   theme(plot.title = element_text(hjust = 0.5)) +
   theme_minimal(base_size = 28)
   #theme(panel.background = element_rect(fill = "#fafafa", colour = "#fafafa"), 
-   #            plot.background = element_rect(fill = "#fafafa", colour = "#fafafa"))
+  #plot.background = element_rect(fill = "#fafafa", colour = "#fafafa"))
 #ggtitle("Russian")+
+cor_coeff_plot
 
 theme_set(theme_gray(base_size = 24))
 ggplot(metadata, aes(x=metadata$numOfSpeakers, y=metadata$cor_coeff))+
@@ -81,13 +80,22 @@ names(percentages) <- c("group",
                            "Number of words", 
                            "Number of speech acts", 
                            "Number of stages")
+names(percentages) <- c("group",
+                        "Степень",
+                        "Взвешенная степень",
+                        "Степень близости",
+                        "Степень посредничества",
+                        "Степень важности",
+                        "Количество слов", 
+                        "Количество реплик", 
+                        "Количество сцен")
 
 first <- percentages
 first$`Weighted degree` <- NULL
 first$`Closeness centrality` <- NULL
 first$`Eigenvector centrality` <- NULL
 
-percentages_df2 <- melt(first, id.vars = c("group"))
+percentages_df2 <- melt(percentages, id.vars = c("group"))
 
 #theme_set(theme_minimal(base_size = 14))
 percentages_plot <- ggplot(percentages_df2, aes(x=group, y=value, fill = group)) + 
@@ -95,13 +103,13 @@ percentages_plot <- ggplot(percentages_df2, aes(x=group, y=value, fill = group))
   #scale_fill_manual(values=c("#e4c7f1", "#d1afe8", "#b998dd", "#9f82ce"))+
   scale_fill_manual(values=c("#96d0d1", "#68abb8", "#45829b", "#2a5674"))+
   labs(x = NULL, y = NULL)+
-  #theme_minimal(baze_size = 14)+
-  #theme(legend.position="none")+
-  geom_text(aes(label = paste0(round(percentages_df2$value, digits = 0),"%")), hjust=-0.1, size=7)+
-  theme_minimal(base_size = 24) +
+  theme_minimal(base_size = 23)+
   theme(legend.position="none")+
+  geom_text(aes(label = paste0(round(percentages_df2$value, digits = 0),"%")), hjust=-0.1, size=5)+
+  #theme_minimal(base_size = 24) +
   coord_flip()
 
+percentages_plot + facet_wrap(percentages_df2$variable, nrow = 8)
 #theme(legend.position="none", panel.background = element_rect(fill = "#fafafa", colour = "#fafafa"), 
 #plot.background = element_rect(fill = "#fafafa", colour = "#fafafa"))+
 
@@ -109,26 +117,28 @@ percentages_five <- percentages_plot + facet_wrap(percentages_df2$variable, nrow
 #+ ggtitle("RusDraCor")
 percentages_five
 
-theme_set(theme_minimal(base_size = 14))
+#Plot for text
+theme_set(theme_minimal(base_size = 20))
 percentages_plot <- ggplot(percentages_df2, aes(x=group, y=value, fill = group)) + 
-  geom_bar(stat = "identity") +
-  scale_fill_manual(values=carto_pal(7, "Emrld"))+
+  geom_bar(stat = "identity", width = 1) +
+  scale_fill_manual(values=c("#96d0d1", "#68abb8", "#45829b", "#2a5674"))+
+  #scale_fill_manual(values=carto_pal(7, "Emrld"))+
   labs(x = NULL, y = NULL)+
   theme_minimal()+
   theme(legend.position="none")+
-  geom_text(aes(label = paste0(round(percentages_df2$value, digits = 0),"%")), hjust=-0.1, size=3)+
+  geom_text(aes(label = paste0(round(percentages_df2$value, digits = 0),"%")), hjust=-0.1, size=3.5)+
   coord_flip()
 
-percentages_plot + facet_wrap(percentages_df2$variable, nrow = 8) + ggtitle("GerDraCor")
+percentages_plot + facet_wrap(percentages_df2$variable, nrow = 8)
 
 
 #theme_set(theme_minimal(base_size = 18))
 first_group_degree_plot <- ggplot(major_group_df, aes(x=year, y=cut_degree)) + 
   geom_boxplot(outlier.shape = NA) +
-  stat_summary(fun.y=median, geom="smooth", aes(group=0),lwd=1.7, color="#CE4C73") +
-  labs(x="Decades", y = "Percentage of characters in the first group")+
-  geom_jitter(size=2.5)+
-  theme_minimal(base_size = 26)
+  stat_summary(fun.y=median, geom="smooth", aes(group=0),lwd=1.7, color="#45829b") +
+  labs(x=" ", y = "Процент персонажей первой группы")+
+  geom_jitter(size=1.7)+
+  theme_minimal(base_size = 18)
   #theme(panel.background = element_rect(fill = "#fafafa", colour = "#fafafa"), 
   #      plot.background = element_rect(fill = "#fafafa", colour = "#fafafa"))
 first_group_degree_plot
